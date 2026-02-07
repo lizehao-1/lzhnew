@@ -189,9 +189,9 @@ export default function Recharge() {
   }
 
   return (
-    <div className="mx-auto max-w-xl px-4 py-10">
+    <div className="mx-auto max-w-xl px-4 py-10 page-enter">
       <div className="mbti-card p-6">
-        <h1 className="text-xl font-black text-slate-950 text-center mb-2">积分充值</h1>
+        <h1 className="text-2xl sm:text-3xl font-black text-slate-950 text-center mb-2 font-display">积分充值</h1>
         <p className="text-xs text-slate-500 text-center mb-6">购买查看次数，解锁完整人格报告</p>
 
         {/* 当前积分 */}

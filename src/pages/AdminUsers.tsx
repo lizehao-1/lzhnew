@@ -53,9 +53,9 @@ export default function AdminUsers() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-10">
+    <div className="mx-auto max-w-2xl px-4 py-10 page-enter">
       <div className="mbti-card p-6">
-        <h1 className="text-xl font-black text-slate-950 text-center mb-2">Admin - Users</h1>
+        <h1 className="text-2xl sm:text-3xl font-black text-slate-950 text-center mb-2 font-display">Admin - Users</h1>
         <p className="text-xs text-slate-500 text-center mb-6">Search users and check credits.</p>
 
         <div className="space-y-3 mb-4">

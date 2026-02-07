@@ -100,7 +100,7 @@ export default function UserMenu() {
       <div className="relative" ref={menuRef}>
         <button
           onClick={() => setShowMenu(!showMenu)}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 transition-colors"
+          className="mbti-pill hover:bg-white px-3 py-1.5"
         >
           <span className="text-sm font-medium text-slate-700">
             {phone.slice(0, 3)}****{phone.slice(-4)}
@@ -108,7 +108,7 @@ export default function UserMenu() {
         </button>
 
         {showMenu && (
-          <div className="absolute right-0 top-full mt-2 w-40 rounded-xl border border-slate-200 bg-white shadow-lg py-2 z-50">
+          <div className="absolute right-0 top-full mt-2 w-40 mbti-card py-2 z-50">
             <button
               onClick={() => { navigate('/history'); setShowMenu(false) }}
               className="w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
@@ -144,7 +144,7 @@ export default function UserMenu() {
       </button>
 
       {showLogin && (
-        <div className="absolute right-0 top-full mt-2 w-72 rounded-xl border border-slate-200 bg-white shadow-lg p-4 z-50">
+        <div className="absolute right-0 top-full mt-2 w-72 mbti-card p-4 z-50">
           <h3 className="text-sm font-bold text-slate-900 mb-3">登录查看历史记录</h3>
           <div className="space-y-2">
             <input
@@ -166,7 +166,7 @@ export default function UserMenu() {
             <button
               onClick={handleLogin}
               disabled={loading}
-              className="w-full py-2 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 disabled:opacity-50"
+              className="w-full mbti-button-primary text-sm disabled:opacity-50"
             >
               {loading ? '登录中...' : '登录'}
             </button>

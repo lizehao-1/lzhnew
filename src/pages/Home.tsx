@@ -33,7 +33,7 @@ export default function Home() {
   }, [location.state])
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 sm:py-12">
+    <div className="mx-auto max-w-6xl px-4 py-10 sm:py-16 page-enter">
       {/* Toast 提示 */}
       {toast && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 animate-fade-in">
@@ -52,7 +52,7 @@ export default function Home() {
             <span className="mbti-pill">💰 ¥1 完整报告</span>
           </div>
 
-          <h1 className="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl lg:text-5xl">
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-slate-950 font-display leading-[1.05]">
             把"我是谁"说清楚
           </h1>
           <p className="mt-2 text-xl text-slate-600 sm:text-2xl">
@@ -147,7 +147,7 @@ export default function Home() {
 
       {/* What is MBTI */}
       <section className="mt-12">
-        <h2 className="text-xl font-black tracking-tight text-slate-950 mb-4">什么是 MBTI？</h2>
+        <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-950 mb-4 font-display">什么是 MBTI？</h2>
         <div className="mbti-card p-6">
           <p className="text-sm text-slate-600 leading-relaxed mb-5">
             MBTI（Myers-Briggs Type Indicator）是一种性格类型指标，通过四个维度的偏好组合，形成 16 种人格类型。它不是给你贴标签，而是帮你理解自己的思维和行为偏好。
@@ -169,7 +169,7 @@ export default function Home() {
 
       {/* Use Cases */}
       <section className="mt-12">
-        <h2 className="text-xl font-black tracking-tight text-slate-950 mb-4">适合你用在哪？</h2>
+        <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-950 mb-4 font-display">适合你用在哪？</h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {[
             { icon: '🧠', text: '了解自己在压力/冲突下的默认反应' },
@@ -189,7 +189,7 @@ export default function Home() {
       <section className="mt-12 mbti-card p-6 sm:p-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <div className="text-xl font-black tracking-tight text-slate-950">准备好开始了吗？</div>
+            <div className="text-2xl sm:text-3xl font-black tracking-tight text-slate-950 font-display">准备好开始了吗？</div>
             <div className="mt-1 text-sm text-slate-600">48 道题，约 10 分钟，拿到你的四字母类型和完整解析。</div>
           </div>
           <button className="mbti-button-primary whitespace-nowrap" onClick={() => navigate('/test')}>

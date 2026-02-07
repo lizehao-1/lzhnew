@@ -46,7 +46,7 @@ function calculateResult(answers: Answers, questions: Question[]): string {
 // 选择题库版本
 function SetSelector({ onSelect }: { onSelect: (id: QuestionSetId) => void }) {
   return (
-    <div className="mx-auto max-w-2xl px-4 py-10">
+    <div className="mx-auto max-w-2xl px-4 py-10 page-enter">
       <div className="text-center mb-8">
         <h1 className="text-2xl font-black text-slate-950">选择测试版本</h1>
         <p className="mt-2 text-sm text-slate-500">题目越多结果越准确，但需要更多时间</p>
@@ -145,7 +145,7 @@ export default function Test() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 pb-10 pt-4">
+    <div className="mx-auto max-w-2xl px-4 pb-10 pt-4 page-enter">
       {/* 进度条 */}
       <div className="mb-5 rounded-xl border border-slate-200 bg-white/70 backdrop-blur px-4 py-3">
         <div className="flex items-center justify-between text-xs text-slate-500 mb-2">

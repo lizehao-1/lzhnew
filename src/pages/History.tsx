@@ -198,9 +198,9 @@ export default function History() {
   }
 
   return (
-    <div className="mx-auto max-w-xl px-4 py-10">
+    <div className="mx-auto max-w-xl px-4 py-10 page-enter">
       <div className="mbti-card p-6">
-        <h1 className="text-xl font-black text-slate-950 text-center mb-2">查询历史记录</h1>
+        <h1 className="text-2xl sm:text-3xl font-black text-slate-950 text-center mb-2 font-display">查询历史记录</h1>
         <p className="text-xs text-slate-500 text-center mb-6">输入手机号和密码查看之前的测试结果</p>
 
         <div className="space-y-3 mb-6">

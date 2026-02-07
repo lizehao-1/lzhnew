@@ -279,7 +279,7 @@ export default function Payment() {
   const displayPrice = payData?.money || DEFAULT_PRICE
 
   return (
-    <div className="mx-auto max-w-xl px-4 py-10">
+    <div className="mx-auto max-w-xl px-4 py-10 page-enter">
       <div className="mbti-card p-6">
         {/* 结果预览 */}
         <div className="text-center mb-6">
