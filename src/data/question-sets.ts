@@ -2,7 +2,7 @@
  * 题库版本配置
  * 使用懒加载提升性能
  */
-import { Question, questions as questions48 } from './questions'
+import { Question } from './questions'
 
 export type QuestionSetId = '28' | '48' | '93'
 
@@ -27,11 +27,13 @@ export async function loadQuestions(setId: QuestionSetId): Promise<Question[]> {
       const { questions28 } = await import('./questions-28')
       return questions28
     case '48':
-      return questions48
+      const { questions48Pro } = await import('./questions-48-pro')
+      return questions48Pro
     case '93':
       const { questions93 } = await import('./questions-93')
       return questions93
     default:
-      return questions48
+      const { questions48Pro: defaultQ } = await import('./questions-48-pro')
+      return defaultQ
   }
 }
