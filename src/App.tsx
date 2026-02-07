@@ -7,6 +7,10 @@ import History from './pages/History'
 import Recharge from './pages/Recharge'
 import AdminUsers from './pages/AdminUsers'
 import Shell from './components/Shell'
+import Big5 from './pages/Big5'
+import RIASEC from './pages/RIASEC'
+import SJT from './pages/SJT'
+import VisualTest from './pages/VisualTest'
 
 function App() {
   return (
@@ -20,6 +24,10 @@ function App() {
           <Route path="/history" element={<History />} />
           <Route path="/recharge" element={<Recharge />} />
           <Route path="/admin" element={<AdminUsers />} />
+          <Route path="/tests/big5" element={<Big5 />} />
+          <Route path="/tests/riasec" element={<RIASEC />} />
+          <Route path="/tests/sjt" element={<SJT />} />
+          <Route path="/tests/visual" element={<VisualTest />} />
         </Routes>
       </Shell>
     </BrowserRouter>

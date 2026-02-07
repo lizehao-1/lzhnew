@@ -30,12 +30,6 @@ export default function Home() {
     }
   }, [location.state])
 
-  const showToast = (message: string) => {
-    setToast(message)
-    const timer = setTimeout(() => setToast(null), 2400)
-    return () => clearTimeout(timer)
-  }
-
   const tests: TestCard[] = [
     {
       key: 'mbti',
@@ -45,7 +39,7 @@ export default function Home() {
       meta: t('home_test_mbti_meta'),
       status: 'live',
       cta: t('home_test_mbti_cta'),
-      image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=1600&q=80',
+      image: '/images/tests/mbti.jpg',
       action: () => navigate('/test'),
     },
     {
@@ -56,8 +50,8 @@ export default function Home() {
       meta: t('home_test_big5_meta'),
       status: 'soon',
       cta: t('home_test_soon_cta'),
-      image: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=1600&q=80',
-      action: () => showToast(t('home_coming_soon')),
+      image: '/images/tests/big5.jpg',
+      action: () => navigate('/tests/big5'),
     },
     {
       key: 'riasec',
@@ -67,8 +61,8 @@ export default function Home() {
       meta: t('home_test_riasec_meta'),
       status: 'soon',
       cta: t('home_test_soon_cta'),
-      image: 'https://images.pexels.com/photos/1181406/pexels-photo-1181406.jpeg?auto=compress&cs=tinysrgb&w=1600',
-      action: () => showToast(t('home_coming_soon')),
+      image: '/images/tests/riasec.jpg',
+      action: () => navigate('/tests/riasec'),
     },
     {
       key: 'sjt',
@@ -78,8 +72,8 @@ export default function Home() {
       meta: t('home_test_sjt_meta'),
       status: 'soon',
       cta: t('home_test_soon_cta'),
-      image: 'https://images.pexels.com/photos/3184613/pexels-photo-3184613.jpeg?auto=compress&cs=tinysrgb&w=1600',
-      action: () => showToast(t('home_coming_soon')),
+      image: '/images/tests/sjt.jpg',
+      action: () => navigate('/tests/sjt'),
     },
     {
       key: 'visual',
@@ -89,8 +83,8 @@ export default function Home() {
       meta: t('home_test_visual_meta'),
       status: 'soon',
       cta: t('home_test_soon_cta'),
-      image: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1600&q=80',
-      action: () => showToast(t('home_coming_soon')),
+      image: '/images/tests/visual.jpg',
+      action: () => navigate('/tests/visual'),
     },
   ]
 
@@ -224,7 +218,15 @@ export default function Home() {
               className="test-card text-left"
               onClick={test.action}
             >
-              <div className="test-card__media" style={{ backgroundImage: `url(${test.image})` }} />
+              <div className="test-card__media">
+                <img
+                  src={test.image}
+                  alt={test.title}
+                  loading="lazy"
+                  decoding="async"
+                  className="test-card__img"
+                />
+              </div>
               <div className="test-card__overlay" />
               <div className="test-card__content">
                 <div className="flex items-center gap-2 text-xs text-slate-100">

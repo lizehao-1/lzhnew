@@ -103,8 +103,10 @@
 
   .test-card__media {
     @apply absolute inset-0;
-    background-size: cover;
-    background-position: center;
+  }
+
+  .test-card__img {
+    @apply h-full w-full object-cover;
     filter: saturate(1.05) contrast(1.05);
   }
 
@@ -127,6 +129,18 @@
 
   .test-status--live {
     @apply bg-emerald-400/20 border-emerald-200/40 text-emerald-100;
+  }
+
+  .visual-card {
+    @apply overflow-hidden rounded-3xl border border-slate-200/60 bg-white/80 shadow-[0_16px_40px_rgba(2,6,23,0.12)];
+  }
+
+  .visual-card img {
+    @apply h-64 w-full object-cover;
+  }
+
+  .visual-card--active {
+    @apply ring-4 ring-sky-200;
   }
 }
 

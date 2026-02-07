@@ -191,7 +191,43 @@ const MESSAGES: Messages = {
   login_loading: { zh: '登录中...', en: 'Signing in...' },
   login_tip: { zh: '完成测试后自动创建账号', en: 'Account will be created after the test.' },
 
-  lang_label: { zh: '中文 / English', en: '中文 / English' }
+  lang_label: { zh: '中文 / English', en: '中文 / English' },
+
+  test_hub_badge: { zh: '测试说明', en: 'Test overview' },
+  test_hub_cta: { zh: '进入测试', en: 'Enter test' },
+
+  big5_title: { zh: 'Big Five 五大人格', en: 'Big Five Traits' },
+  big5_intro: { zh: '通过五个维度刻画你的稳定性、外向性、责任心等特质，用于面试表达与岗位匹配。', en: 'Profile OCEAN traits to support interview stories and fit points.' },
+  big5_core_title: { zh: '标准版（50题）', en: 'Standard (50)' },
+  big5_core_desc: { zh: '完整五维度评估，适合求职/转岗。', en: 'Full OCEAN profile for job matching.' },
+  big5_core_detail: { zh: '预计 10-12 分钟 · 报告含建议', en: '10–12 min · actionable report' },
+  big5_work_title: { zh: '职场版（30题）', en: 'Work (30)' },
+  big5_work_desc: { zh: '聚焦职场沟通与稳定性。', en: 'Focus on workplace communication and stability.' },
+  big5_work_detail: { zh: '预计 6-8 分钟 · 内测中', en: '6–8 min · beta' },
+
+  riasec_title: { zh: 'RIASEC 职业兴趣', en: 'RIASEC Career Interests' },
+  riasec_intro: { zh: '找出最匹配的职业兴趣类型，辅助岗位选择与简历方向。', en: 'Identify interest types to guide role selection and resume focus.' },
+  riasec_quick_title: { zh: '快速版（24题）', en: 'Quick (24)' },
+  riasec_quick_desc: { zh: '快速判断兴趣倾向。', en: 'Quick interest snapshot.' },
+  riasec_quick_detail: { zh: '预计 5-6 分钟 · 内测中', en: '5–6 min · beta' },
+  riasec_deep_title: { zh: '深入版（60题）', en: 'Deep (60)' },
+  riasec_deep_desc: { zh: '更精细的职业匹配图谱。', en: 'Detailed interest mapping.' },
+  riasec_deep_detail: { zh: '预计 12 分钟 · 内测中', en: '12 min · beta' },
+
+  sjt_title: { zh: '情境判断 SJT', en: 'Situational Judgement' },
+  sjt_intro: { zh: '通过真实场景判断题，评估你的处置方式与风险点。', en: 'Scenario-based questions to evaluate decisions and risks.' },
+  sjt_work_title: { zh: '职场沟通版', en: 'Workplace communication' },
+  sjt_work_desc: { zh: '冲突/协作/汇报等场景。', en: 'Conflict, collaboration, reporting scenarios.' },
+  sjt_work_detail: { zh: '预计 10 分钟 · 内测中', en: '10 min · beta' },
+  sjt_case_title: { zh: '案例分析版', en: 'Case scenarios' },
+  sjt_case_desc: { zh: '更贴近真实面试案例。', en: 'Closer to interview case prompts.' },
+  sjt_case_detail: { zh: '预计 12 分钟 · 内测中', en: '12 min · beta' },
+
+  visual_badge: { zh: '图片题', en: 'Visual' },
+  visual_title: { zh: '视觉偏好选择', en: 'Visual Preference' },
+  visual_intro: { zh: '从图片中选择更符合直觉的答案，用于辅助情绪与偏好判断。', en: 'Choose images that feel intuitive to explore preference patterns.' },
+  visual_cta: { zh: '提交选择', en: 'Submit choice' },
+  visual_selected: { zh: '已选择 1 张图片', en: '1 image selected' }
 }
 
 type MessageKey = keyof typeof MESSAGES
