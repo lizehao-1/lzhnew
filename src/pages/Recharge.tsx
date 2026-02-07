@@ -66,13 +66,12 @@ export default function Recharge() {
       const resp = await fetch(`/api/user/query?phone=${encodeURIComponent(phone)}&pin=${encodeURIComponent(pin)}&t=${Date.now()}`)
       const data = await resp.json()
       if (!resp.ok || resp.status === 401 || data.needPin) {
-        setCurrentCredits(applyCreditOverride(0))
+        setCurrentCredits(0)
         return
       }
       if (data.found) {
         const creditsValue = data.credits || 0
-        setCurrentCredits(applyCreditOverride(creditsValue))
-        localStorage.setItem('mbti_last_known_credits', String(creditsValue))
+        setCurrentCredits(creditsValue)
       }
     } catch {
       // 静默失败
@@ -136,8 +135,8 @@ export default function Recharge() {
         if (data.paid) {
           // 支付成功，等待1秒让回调执行完再刷新积分
           await new Promise(r => setTimeout(r, 1000))
-          localStorage.setItem('mbti_credits_delta', String(selectedPkg.credits))
-          localStorage.setItem('mbti_credits_override_at', String(Date.now()))
+          localStorage.removeItem('mbti_credits_delta')
+          localStorage.removeItem('mbti_credits_override_at')
           if (phone && pin) {
             await fetchCredits(phone, pin)
           }
@@ -345,22 +344,4 @@ function maybeSyncPayment() {
     .catch(() => false)
 }
 
-function applyCreditOverride(serverCredits: number) {
-  const at = Number(localStorage.getItem('mbti_credits_override_at') || '0')
-  const delta = Number(localStorage.getItem('mbti_credits_delta') || 'NaN')
-  const lastKnown = Number(localStorage.getItem('mbti_last_known_credits') || 'NaN')
-  if (!at || !Number.isFinite(delta)) return serverCredits
-  if (Date.now() - at > 60 * 1000) {
-    localStorage.removeItem('mbti_credits_delta')
-    localStorage.removeItem('mbti_credits_override_at')
-    return serverCredits
-  }
-  const base = Number.isFinite(lastKnown) ? lastKnown : serverCredits
-  const next = Math.max(base + delta, serverCredits)
-  if (serverCredits >= next) {
-    localStorage.removeItem('mbti_credits_delta')
-    localStorage.removeItem('mbti_credits_override_at')
-    return serverCredits
-  }
-  return next
-}
+// D1 is strongly consistent now; no optimistic override needed.

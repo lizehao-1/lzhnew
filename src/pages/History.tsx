@@ -57,18 +57,17 @@ export default function History() {
       const data = await resp.json()
       if (resp.status === 401 || data.needPin) {
         setRecords(null)
-        setCredits(applyCreditOverride(0))
+        setCredits(0)
         return
       }
       if (!resp.ok) {
-        setCredits(applyCreditOverride(0))
+        setCredits(0)
         return
       }
       if (data.found) {
         setRecords(data.records?.length > 0 ? [...data.records].reverse() : [])
         const creditsValue = data.credits || 0
-        setCredits(applyCreditOverride(creditsValue))
-        localStorage.setItem('mbti_last_known_credits', String(creditsValue))
+        setCredits(creditsValue)
         setNotFound(data.records?.length === 0)
       }
     } catch { /* ignore */ }
@@ -110,7 +109,7 @@ export default function History() {
       if (resp.status === 401 || data.needPin) {
         setPhoneError('PIN码错误')
         setRecords(null)
-        setCredits(applyCreditOverride(0))
+        setCredits(0)
         setLoading(false)
         return
       }
@@ -118,7 +117,7 @@ export default function History() {
       if (!resp.ok) {
         setPhoneError(data.error || '查询失败，请重试')
         setRecords(null)
-        setCredits(applyCreditOverride(0))
+        setCredits(0)
         setLoading(false)
         return
       }
@@ -127,8 +126,7 @@ export default function History() {
         const list = data.records?.length > 0 ? [...data.records].reverse() : []
         setRecords(list)
         const creditsValue = data.credits || 0
-        setCredits(applyCreditOverride(creditsValue))
-        localStorage.setItem('mbti_last_known_credits', String(creditsValue))
+        setCredits(creditsValue)
         // 保存到本地，方便后续使用
         localStorage.setItem('mbti_phone', phone)
         localStorage.setItem('mbti_pin', pin)
@@ -156,17 +154,6 @@ export default function History() {
     }
 
     if (credits <= 0) {
-      // If we have a recent payment override, allow immediate view and queue a background credit consume
-      if (hasActiveCreditOverride()) {
-        localStorage.setItem('mbti_result', record.result)
-        localStorage.setItem('mbti_paid', 'true')
-        localStorage.setItem('mbti_pending_use_credit', JSON.stringify({ phone, timestamp: record.timestamp, at: Date.now() }))
-        setRecords(prev => prev?.map(r =>
-          r.timestamp === record.timestamp ? { ...r, viewed: true } : r
-        ) || null)
-        navigate('/result')
-        return
-      }
       alert('积分不足，请先支付后查看完整报告')
       return
     }
@@ -189,16 +176,6 @@ export default function History() {
         localStorage.setItem('mbti_paid', 'true')
         navigate('/result')
       } else if (data.needPayment) {
-        if (hasActiveCreditOverride()) {
-          localStorage.setItem('mbti_result', record.result)
-          localStorage.setItem('mbti_paid', 'true')
-          localStorage.setItem('mbti_pending_use_credit', JSON.stringify({ phone, timestamp: record.timestamp, at: Date.now() }))
-          setRecords(prev => prev?.map(r =>
-            r.timestamp === record.timestamp ? { ...r, viewed: true } : r
-          ) || null)
-          navigate('/result')
-          return
-        }
         alert('积分不足，请先支付后查看完整报告')
         setCredits(0)
       }
@@ -350,29 +327,4 @@ function maybeSyncPayment(phone: string) {
     .catch(() => false)
 }
 
-function applyCreditOverride(serverCredits: number) {
-  const at = Number(localStorage.getItem('mbti_credits_override_at') || '0')
-  const delta = Number(localStorage.getItem('mbti_credits_delta') || 'NaN')
-  const lastKnown = Number(localStorage.getItem('mbti_last_known_credits') || 'NaN')
-  if (!at || !Number.isFinite(delta)) return serverCredits
-  if (Date.now() - at > 60 * 1000) {
-    localStorage.removeItem('mbti_credits_delta')
-    localStorage.removeItem('mbti_credits_override_at')
-    return serverCredits
-  }
-  const base = Number.isFinite(lastKnown) ? lastKnown : serverCredits
-  const next = Math.max(base + delta, serverCredits)
-  if (serverCredits >= next) {
-    localStorage.removeItem('mbti_credits_delta')
-    localStorage.removeItem('mbti_credits_override_at')
-    return serverCredits
-  }
-  return next
-}
-
-function hasActiveCreditOverride() {
-  const at = Number(localStorage.getItem('mbti_credits_override_at') || '0')
-  const delta = Number(localStorage.getItem('mbti_credits_delta') || 'NaN')
-  if (!at || !Number.isFinite(delta)) return false
-  return Date.now() - at <= 60 * 1000
-}
+// D1 is strongly consistent now; no optimistic override needed.
