@@ -83,6 +83,14 @@
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
   }
 
+  .mbti-dropdown {
+    @apply overflow-hidden;
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow:
+      0 16px 40px rgba(2, 6, 23, 0.12),
+      inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  }
+
   .glass-header {
     @apply border-b border-slate-200/60 bg-white/55 backdrop-blur-xl;
     box-shadow: 0 8px 30px rgba(2, 6, 23, 0.06);
