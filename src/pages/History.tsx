@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { personalities } from '../data/personalities'
 
@@ -19,6 +19,31 @@ export default function History() {
   const [credits, setCredits] = useState(0)
   const [notFound, setNotFound] = useState(false)
 
+  // 自动填充已保存的登录信息并自动查询
+  useEffect(() => {
+    const savedPhone = localStorage.getItem('mbti_phone')
+    const savedPin = localStorage.getItem('mbti_pin')
+    if (savedPhone && savedPin) {
+      setPhone(savedPhone)
+      setPin(savedPin)
+      // 自动查询
+      autoQuery(savedPhone, savedPin)
+    }
+  }, [])
+
+  const autoQuery = async (phone: string, pin: string) => {
+    setLoading(true)
+    try {
+      const resp = await fetch(`/api/user/query?phone=${encodeURIComponent(phone)}&pin=${encodeURIComponent(pin)}`)
+      const data = await resp.json()
+      if (data.found && !data.error && data.records?.length > 0) {
+        setRecords(data.records.reverse())
+        setCredits(data.credits || 0)
+      }
+    } catch { /* ignore */ }
+    finally { setLoading(false) }
+  }
+
   const validatePhone = (value: string) => {
     if (!value) return '请输入手机号'
     if (!/^1[3-9]\d{9}$/.test(value)) return '请输入正确的手机号'
@@ -26,8 +51,8 @@ export default function History() {
   }
 
   const validatePin = (value: string) => {
-    if (!value) return '请输入PIN码'
-    if (!/^\d{4}$/.test(value)) return 'PIN码必须是4位数字'
+    if (!value) return '请输入密码'
+    if (!/^\d{4}$/.test(value)) return '密码必须是4位数字'
     return ''
   }
 

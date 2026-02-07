@@ -17,7 +17,7 @@ export interface QuestionSet {
 export const questionSets: QuestionSet[] = [
   { id: '28', name: '快速版', count: 28, time: '5分钟', desc: '快速了解，适合初次体验' },
   { id: '48', name: '标准版', count: 48, time: '10分钟', desc: '平衡准确性和时间，推荐' },
-  { id: '93', name: '完整版', count: 93, time: '20分钟', desc: '最全面准确，深度了解自己' },
+  { id: '93', name: '完整版', count: 70, time: '15分钟', desc: '最全面准确，深度了解自己' },
 ]
 
 // 题库加载器（懒加载）
