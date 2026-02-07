@@ -1,53 +1,28 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
-
-type UserData = {
-  phone: string
-  pin: string
-  credits: number
-}
+import { useNavigate } from 'react-router-dom'
 
 export default function UserMenu() {
   const navigate = useNavigate()
-  const location = useLocation()
-  const [user, setUser] = useState<UserData | null>(null)
+  const [phone, setPhone] = useState<string | null>(null)
   const [showLogin, setShowLogin] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
-  const [phone, setPhone] = useState('')
-  const [pin, setPin] = useState('')
+  const [inputPhone, setInputPhone] = useState('')
+  const [inputPin, setInputPin] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
-  // 检查登录状态的函数
-  const checkLoginStatus = () => {
-    const savedPhone = localStorage.getItem('mbti_phone')
-    const savedPin = localStorage.getItem('mbti_pin')
-    if (savedPhone && savedPin) {
-      fetchUserData(savedPhone, savedPin)
-    } else {
-      setUser(null)
-    }
-  }
-
   // 从 localStorage 恢复登录状态
   useEffect(() => {
-    checkLoginStatus()
+    const savedPhone = localStorage.getItem('mbti_phone')
+    if (savedPhone) setPhone(savedPhone)
   }, [])
 
-  // 页面切换时刷新登录状态和积分（延迟执行确保数据已更新）
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      checkLoginStatus()
-    }, 300)
-    return () => clearTimeout(timer)
-  }, [location.pathname])
-
-  // 监听自定义登录事件（同一页面内其他组件触发）
+  // 监听登录状态变化
   useEffect(() => {
     const handleLoginChange = () => {
-      // 延迟执行，确保后端数据已更新
-      setTimeout(() => checkLoginStatus(), 300)
+      const savedPhone = localStorage.getItem('mbti_phone')
+      setPhone(savedPhone)
     }
     window.addEventListener('mbti-login-change', handleLoginChange)
     return () => window.removeEventListener('mbti-login-change', handleLoginChange)
@@ -65,24 +40,12 @@ export default function UserMenu() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const fetchUserData = async (phone: string, pin: string) => {
-    try {
-      const resp = await fetch(`/api/user/query?phone=${encodeURIComponent(phone)}&pin=${encodeURIComponent(pin)}`)
-      const data = await resp.json()
-      if (data.found && !data.error) {
-        setUser({ phone, pin, credits: data.credits || 0 })
-      }
-    } catch {
-      // 静默失败
-    }
-  }
-
   const handleLogin = async () => {
-    if (!phone || !/^1[3-9]\d{9}$/.test(phone)) {
+    if (!inputPhone || !/^1[3-9]\d{9}$/.test(inputPhone)) {
       setError('请输入正确的手机号')
       return
     }
-    if (!pin || !/^\d{4}$/.test(pin)) {
+    if (!inputPin || !/^\d{4}$/.test(inputPin)) {
       setError('请输入4位数字密码')
       return
     }
@@ -90,7 +53,7 @@ export default function UserMenu() {
     setLoading(true)
 
     try {
-      const resp = await fetch(`/api/user/query?phone=${encodeURIComponent(phone)}&pin=${encodeURIComponent(pin)}`)
+      const resp = await fetch(`/api/user/query?phone=${encodeURIComponent(inputPhone)}&pin=${encodeURIComponent(inputPin)}`)
       const data = await resp.json()
       
       if (data.error === 'PIN码错误') {
@@ -100,12 +63,12 @@ export default function UserMenu() {
       }
       
       if (data.found) {
-        localStorage.setItem('mbti_phone', phone)
-        localStorage.setItem('mbti_pin', pin)
-        setUser({ phone, pin, credits: data.credits || 0 })
+        localStorage.setItem('mbti_phone', inputPhone)
+        localStorage.setItem('mbti_pin', inputPin)
+        setPhone(inputPhone)
         setShowLogin(false)
-        setPhone('')
-        setPin('')
+        setInputPhone('')
+        setInputPin('')
       } else {
         setError('账号不存在，请先完成测试')
       }
@@ -120,18 +83,12 @@ export default function UserMenu() {
     localStorage.removeItem('mbti_phone')
     localStorage.removeItem('mbti_pin')
     localStorage.removeItem('mbti_paid')
-    setUser(null)
+    setPhone(null)
     setShowMenu(false)
   }
 
-  const refreshCredits = async () => {
-    if (user) {
-      await fetchUserData(user.phone, user.pin)
-    }
-  }
-
   // 已登录状态
-  if (user) {
+  if (phone) {
     return (
       <div className="relative" ref={menuRef}>
         <button
@@ -139,19 +96,12 @@ export default function UserMenu() {
           className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 transition-colors"
         >
           <span className="text-sm font-medium text-slate-700">
-            {user.phone.slice(0, 3)}****{user.phone.slice(-4)}
-          </span>
-          <span className="text-xs px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">
-            {user.credits}
+            {phone.slice(0, 3)}****{phone.slice(-4)}
           </span>
         </button>
 
         {showMenu && (
-          <div className="absolute right-0 top-full mt-2 w-48 rounded-xl border border-slate-200 bg-white shadow-lg py-2 z-50">
-            <div className="px-3 py-2 border-b border-slate-100">
-              <div className="text-xs text-slate-500">剩余查看次数</div>
-              <div className="text-lg font-black text-amber-600">{user.credits}</div>
-            </div>
+          <div className="absolute right-0 top-full mt-2 w-40 rounded-xl border border-slate-200 bg-white shadow-lg py-2 z-50">
             <button
               onClick={() => { navigate('/history'); setShowMenu(false) }}
               className="w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
@@ -163,12 +113,6 @@ export default function UserMenu() {
               className="w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
             >
               💰 充值积分
-            </button>
-            <button
-              onClick={refreshCredits}
-              className="w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
-            >
-              🔄 刷新积分
             </button>
             <button
               onClick={handleLogout}
@@ -198,15 +142,15 @@ export default function UserMenu() {
           <div className="space-y-2">
             <input
               type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 11))}
+              value={inputPhone}
+              onChange={(e) => setInputPhone(e.target.value.replace(/\D/g, '').slice(0, 11))}
               placeholder="手机号"
               className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:border-slate-400 focus:outline-none"
             />
             <input
               type="tel"
-              value={pin}
-              onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+              value={inputPin}
+              onChange={(e) => setInputPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
               placeholder="4位数字密码"
               className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:border-slate-400 focus:outline-none"
               onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
