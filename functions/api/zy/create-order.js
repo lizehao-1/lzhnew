@@ -26,7 +26,7 @@ export async function onRequest(context) {
   try {
     const API_BASE = env.ZY_API_BASE || 'http://pay.zy520888.com'
     const PID = env.ZY_PID
-    const PRIVATE_KEY = getPrivateKey(env.ZY_PRIVATE_KEY || '')
+    const PRIVATE_KEY = env.ZY_PRIVATE_KEY || ''
     
     // 价格表（后端定义，不可篡改）
     const PRICE_TABLE = {
@@ -65,7 +65,7 @@ export async function onRequest(context) {
       ? `MBTI_${phone}_${Date.now()}_${Math.floor(Math.random() * 1000)}`
       : `MBTI_${Date.now()}_${Math.floor(Math.random() * 1000)}`
     const now = Math.floor(Date.now() / 1000).toString()
-    const clientip = request.headers.get('cf-connecting-ip') || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || '127.0.0.1'
+    const clientip = getClientIp(request)
     const ua = request.headers.get('user-agent') || ''
     const device = ua.includes('Mobile') ? 'mobile' : 'pc'
 
@@ -114,15 +114,65 @@ export async function onRequest(context) {
   }
 }
 
-function getPrivateKey(raw) {
+function normalizePem(raw, expectedLabel) {
   if (!raw) return ''
-  let text = raw.replace(/\\n/g, '\n').replace(/\s+/g, '').trim()
-  text = text
-    .replace(/-----BEGIN\s*(RSA\s*)?PRIVATE\s*KEY-----/gi, '')
-    .replace(/-----END\s*(RSA\s*)?PRIVATE\s*KEY-----/gi, '')
-    .replace(/\s/g, '')
-  const lines = text.match(/.{1,64}/g) || [text]
-  return `-----BEGIN PRIVATE KEY-----\n${lines.join('\n')}\n-----END PRIVATE KEY-----`
+  const text = String(raw).replace(/\\n/g, '\n').trim()
+  if (/-----BEGIN [^-]+-----/.test(text)) {
+    return text
+  }
+  const compact = text.replace(/\s+/g, '')
+  const lines = compact.match(/.{1,64}/g) || [compact]
+  return `-----BEGIN ${expectedLabel}-----\n${lines.join('\n')}\n-----END ${expectedLabel}-----`
+}
+
+function derLength(len) {
+  if (len < 0x80) return Uint8Array.from([len])
+  const bytes = []
+  let n = len
+  while (n > 0) {
+    bytes.unshift(n & 0xff)
+    n >>= 8
+  }
+  return Uint8Array.from([0x80 | bytes.length, ...bytes])
+}
+
+function derEncode(tag, valueBytes) {
+  const len = derLength(valueBytes.length)
+  const out = new Uint8Array(1 + len.length + valueBytes.length)
+  out[0] = tag
+  out.set(len, 1)
+  out.set(valueBytes, 1 + len.length)
+  return out
+}
+
+function derConcat(...chunks) {
+  const total = chunks.reduce((sum, c) => sum + c.length, 0)
+  const out = new Uint8Array(total)
+  let offset = 0
+  for (const c of chunks) {
+    out.set(c, offset)
+    offset += c.length
+  }
+  return out
+}
+
+function wrapPkcs1PrivateToPkcs8(pkcs1Bytes) {
+  const version = Uint8Array.from([0x02, 0x01, 0x00])
+  const algId = Uint8Array.from([
+    0x30, 0x0d,
+    0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01,
+    0x05, 0x00,
+  ])
+  const privateKey = derEncode(0x04, pkcs1Bytes)
+  return derEncode(0x30, derConcat(version, algId, privateKey))
+}
+
+function parsePrivateKeyDer(raw) {
+  const pem = normalizePem(raw, 'PRIVATE KEY')
+  const isPkcs1 = /-----BEGIN RSA PRIVATE KEY-----/.test(pem)
+  const b64 = pem.replace(/-----BEGIN [^-]+-----/g, '').replace(/-----END [^-]+-----/g, '').replace(/\s+/g, '')
+  const keyBytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0))
+  return isPkcs1 ? wrapPkcs1PrivateToPkcs8(keyBytes) : keyBytes
 }
 
 function buildSignString(params) {
@@ -133,7 +183,7 @@ function buildSignString(params) {
       if (typeof value === 'string' && value.trim() === '') return false
       return true
     })
-    .sort(([a], [b]) => a.localeCompare(b))
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
     .map(([key, value]) => `${key}=${value}`)
     .join('&')
 }
@@ -142,13 +192,8 @@ async function signParams(params, privateKeyPem) {
   const signString = buildSignString(params)
   console.log('Sign string:', signString)
 
-  const pemContents = privateKeyPem
-    .replace(/-----BEGIN PRIVATE KEY-----/, '')
-    .replace(/-----END PRIVATE KEY-----/, '')
-    .replace(/\s/g, '')
-  
-  const binaryKey = Uint8Array.from(atob(pemContents), c => c.charCodeAt(0))
-  
+  const binaryKey = parsePrivateKeyDer(privateKeyPem)
+
   const privateKey = await crypto.subtle.importKey(
     'pkcs8',
     binaryKey,
@@ -162,6 +207,16 @@ async function signParams(params, privateKeyPem) {
   const signature = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', privateKey, data)
   
   return btoa(String.fromCharCode(...new Uint8Array(signature)))
+}
+
+function isIPv4(ip) {
+  return /^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/.test(ip)
+}
+
+function getClientIp(request) {
+  const raw = request.headers.get('cf-connecting-ip') || request.headers.get('x-forwarded-for') || ''
+  const first = raw.split(',')[0].trim()
+  return isIPv4(first) ? first : '127.0.0.1'
 }
 
 async function postForm(url, params) {

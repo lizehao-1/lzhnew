@@ -25,7 +25,7 @@ export async function onRequest(context) {
 
     console.log('Notify params:', JSON.stringify(params))
 
-    const PUBLIC_KEY = getPublicKey(env.ZY_PUBLIC_KEY || '')
+    const PUBLIC_KEY = env.ZY_PUBLIC_KEY || ''
     
     if (!PUBLIC_KEY) {
       console.log('Missing public key')
@@ -132,15 +132,67 @@ async function addCreditsAndUseOne(env, phone, amount = 3, useOneCredit = false)
   }
 }
 
-function getPublicKey(raw) {
+function normalizePem(raw, expectedLabel) {
   if (!raw) return ''
-  let text = raw.replace(/\\n/g, '\n').replace(/\s+/g, '').trim()
-  text = text
-    .replace(/-----BEGIN\s*PUBLIC\s*KEY-----/gi, '')
-    .replace(/-----END\s*PUBLIC\s*KEY-----/gi, '')
-    .replace(/\s/g, '')
-  const lines = text.match(/.{1,64}/g) || [text]
-  return `-----BEGIN PUBLIC KEY-----\n${lines.join('\n')}\n-----END PUBLIC KEY-----`
+  const text = String(raw).replace(/\\n/g, '\n').trim()
+  if (/-----BEGIN [^-]+-----/.test(text)) {
+    return text
+  }
+  const compact = text.replace(/\s+/g, '')
+  const lines = compact.match(/.{1,64}/g) || [compact]
+  return `-----BEGIN ${expectedLabel}-----\n${lines.join('\n')}\n-----END ${expectedLabel}-----`
+}
+
+function derLength(len) {
+  if (len < 0x80) return Uint8Array.from([len])
+  const bytes = []
+  let n = len
+  while (n > 0) {
+    bytes.unshift(n & 0xff)
+    n >>= 8
+  }
+  return Uint8Array.from([0x80 | bytes.length, ...bytes])
+}
+
+function derEncode(tag, valueBytes) {
+  const len = derLength(valueBytes.length)
+  const out = new Uint8Array(1 + len.length + valueBytes.length)
+  out[0] = tag
+  out.set(len, 1)
+  out.set(valueBytes, 1 + len.length)
+  return out
+}
+
+function derConcat(...chunks) {
+  const total = chunks.reduce((sum, c) => sum + c.length, 0)
+  const out = new Uint8Array(total)
+  let offset = 0
+  for (const c of chunks) {
+    out.set(c, offset)
+    offset += c.length
+  }
+  return out
+}
+
+function wrapPkcs1PublicToSpki(pkcs1Bytes) {
+  const algId = Uint8Array.from([
+    0x30, 0x0d,
+    0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01,
+    0x05, 0x00,
+  ])
+  const bitStringBody = new Uint8Array(pkcs1Bytes.length + 1)
+  bitStringBody[0] = 0x00
+  bitStringBody.set(pkcs1Bytes, 1)
+  const publicKey = derEncode(0x03, bitStringBody)
+  return derEncode(0x30, derConcat(algId, publicKey))
+}
+
+function parsePublicKeyDer(raw) {
+  const pem = normalizePem(raw, 'PUBLIC KEY')
+  const isPkcs1 = /-----BEGIN RSA PUBLIC KEY-----/.test(pem)
+  const b64 = pem.replace(/-----BEGIN [^-]+-----/g, '').replace(/-----END [^-]+-----/g, '').replace(/\s+/g, '')
+  const keyBytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0))
+  return isPkcs1 ? wrapPkcs1PublicToSpki(keyBytes) : keyBytes
 }
 
 function buildSignString(params) {
@@ -151,7 +203,7 @@ function buildSignString(params) {
       if (typeof value === 'string' && value.trim() === '') return false
       return true
     })
-    .sort(([a], [b]) => a.localeCompare(b))
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
     .map(([key, value]) => `${key}=${value}`)
     .join('&')
 }
@@ -163,13 +215,8 @@ async function verifyParams(params, publicKeyPem) {
   const signString = buildSignString(params)
   
   try {
-    const pemContents = publicKeyPem
-      .replace(/-----BEGIN PUBLIC KEY-----/, '')
-      .replace(/-----END PUBLIC KEY-----/, '')
-      .replace(/\s/g, '')
-    
-    const binaryKey = Uint8Array.from(atob(pemContents), c => c.charCodeAt(0))
-    
+    const binaryKey = parsePublicKeyDer(publicKeyPem)
+
     const publicKey = await crypto.subtle.importKey(
       'spki',
       binaryKey,

@@ -57,9 +57,9 @@ export default function Payment() {
     if (savedOrder) {
       try {
         const order = JSON.parse(savedOrder)
-        const orderTime = order.outTradeNo?.match(/_(\d+)_/)?.[1]
+        const orderTime = extractOrderTimestamp(order.outTradeNo)
         // 30分钟内的订单才恢复
-        if (orderTime && Date.now() - parseInt(orderTime) < 30 * 60 * 1000) {
+        if (orderTime && Date.now() - orderTime < 30 * 60 * 1000) {
           setPayData(order)
           setStep('polling')
           return
@@ -392,4 +392,19 @@ export default function Payment() {
       </div>
     </div>
   )
+}
+
+function extractOrderTimestamp(outTradeNo?: string): number | null {
+  if (!outTradeNo) return null
+  const parts = outTradeNo.split('_')
+  if (parts[0] !== 'MBTI') return null
+  if (parts.length >= 4 && /^1[3-9]\d{9}$/.test(parts[1])) {
+    const ts = Number(parts[2])
+    return Number.isFinite(ts) ? ts : null
+  }
+  if (parts.length >= 3) {
+    const ts = Number(parts[1])
+    return Number.isFinite(ts) ? ts : null
+  }
+  return null
 }
