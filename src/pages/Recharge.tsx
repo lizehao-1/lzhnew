@@ -66,7 +66,7 @@ export default function Recharge() {
       const resp = await fetch(`/api/user/query?phone=${encodeURIComponent(phone)}&pin=${encodeURIComponent(pin)}&t=${Date.now()}`)
       const data = await resp.json()
       if (!resp.ok || resp.status === 401 || data.needPin) {
-        setCurrentCredits(0)
+        setCurrentCredits(applyCreditOverride(0))
         return
       }
       if (data.found) {
@@ -136,12 +136,8 @@ export default function Recharge() {
         if (data.paid) {
           // 支付成功，等待1秒让回调执行完再刷新积分
           await new Promise(r => setTimeout(r, 1000))
-          const lastKnown = Number(localStorage.getItem('mbti_last_known_credits') || 'NaN')
-          if (Number.isFinite(lastKnown)) {
-            const nextCredits = lastKnown + selectedPkg.credits
-            localStorage.setItem('mbti_credits_override', String(nextCredits))
-            localStorage.setItem('mbti_credits_override_at', String(Date.now()))
-          }
+          localStorage.setItem('mbti_credits_delta', String(selectedPkg.credits))
+          localStorage.setItem('mbti_credits_override_at', String(Date.now()))
           if (phone && pin) {
             await fetchCredits(phone, pin)
           }
@@ -350,13 +346,21 @@ function maybeSyncPayment() {
 }
 
 function applyCreditOverride(serverCredits: number) {
-  const override = Number(localStorage.getItem('mbti_credits_override') || 'NaN')
   const at = Number(localStorage.getItem('mbti_credits_override_at') || '0')
-  if (!Number.isFinite(override) || !at) return serverCredits
+  const delta = Number(localStorage.getItem('mbti_credits_delta') || 'NaN')
+  const lastKnown = Number(localStorage.getItem('mbti_last_known_credits') || 'NaN')
+  if (!at || !Number.isFinite(delta)) return serverCredits
   if (Date.now() - at > 60 * 1000) {
-    localStorage.removeItem('mbti_credits_override')
+    localStorage.removeItem('mbti_credits_delta')
     localStorage.removeItem('mbti_credits_override_at')
     return serverCredits
   }
-  return override
+  const base = Number.isFinite(lastKnown) ? lastKnown : serverCredits
+  const next = Math.max(base + delta, serverCredits)
+  if (serverCredits >= next) {
+    localStorage.removeItem('mbti_credits_delta')
+    localStorage.removeItem('mbti_credits_override_at')
+    return serverCredits
+  }
+  return next
 }

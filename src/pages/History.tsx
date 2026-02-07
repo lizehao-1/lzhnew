@@ -57,10 +57,11 @@ export default function History() {
       const data = await resp.json()
       if (resp.status === 401 || data.needPin) {
         setRecords(null)
-        setCredits(0)
+        setCredits(applyCreditOverride(0))
         return
       }
       if (!resp.ok) {
+        setCredits(applyCreditOverride(0))
         return
       }
       if (data.found) {
@@ -109,7 +110,7 @@ export default function History() {
       if (resp.status === 401 || data.needPin) {
         setPhoneError('PIN码错误')
         setRecords(null)
-        setCredits(0)
+        setCredits(applyCreditOverride(0))
         setLoading(false)
         return
       }
@@ -117,7 +118,7 @@ export default function History() {
       if (!resp.ok) {
         setPhoneError(data.error || '查询失败，请重试')
         setRecords(null)
-        setCredits(0)
+        setCredits(applyCreditOverride(0))
         setLoading(false)
         return
       }
@@ -329,13 +330,21 @@ function maybeSyncPayment(phone: string) {
 }
 
 function applyCreditOverride(serverCredits: number) {
-  const override = Number(localStorage.getItem('mbti_credits_override') || 'NaN')
   const at = Number(localStorage.getItem('mbti_credits_override_at') || '0')
-  if (!Number.isFinite(override) || !at) return serverCredits
+  const delta = Number(localStorage.getItem('mbti_credits_delta') || 'NaN')
+  const lastKnown = Number(localStorage.getItem('mbti_last_known_credits') || 'NaN')
+  if (!at || !Number.isFinite(delta)) return serverCredits
   if (Date.now() - at > 60 * 1000) {
-    localStorage.removeItem('mbti_credits_override')
+    localStorage.removeItem('mbti_credits_delta')
     localStorage.removeItem('mbti_credits_override_at')
     return serverCredits
   }
-  return override
+  const base = Number.isFinite(lastKnown) ? lastKnown : serverCredits
+  const next = Math.max(base + delta, serverCredits)
+  if (serverCredits >= next) {
+    localStorage.removeItem('mbti_credits_delta')
+    localStorage.removeItem('mbti_credits_override_at')
+    return serverCredits
+  }
+  return next
 }

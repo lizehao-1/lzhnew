@@ -201,12 +201,8 @@ export default function Payment() {
         localStorage.removeItem('mbti_pending_order')
         localStorage.setItem('mbti_last_paid_order', payData.outTradeNo)
         localStorage.setItem('mbti_last_paid_at', String(Date.now()))
-        const lastKnown = Number(localStorage.getItem('mbti_last_known_credits') || 'NaN')
-        if (Number.isFinite(lastKnown)) {
-          const nextCredits = lastKnown + 2
-          localStorage.setItem('mbti_credits_override', String(nextCredits))
-          localStorage.setItem('mbti_credits_override_at', String(Date.now()))
-        }
+        localStorage.setItem('mbti_credits_delta', '2')
+        localStorage.setItem('mbti_credits_override_at', String(Date.now()))
         localStorage.setItem('mbti_paid', 'true')
         await syncCreditsAfterPayment()
         window.dispatchEvent(new Event('mbti-login-change'))
