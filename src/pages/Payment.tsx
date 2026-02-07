@@ -180,6 +180,8 @@ export default function Payment() {
       
       if (data.success) {
         localStorage.setItem('mbti_paid', 'true')
+        // 触发登录状态刷新
+        window.dispatchEvent(new Event('mbti-login-change'))
         navigate('/result')
       } else if (data.needPayment) {
         setStep('intro')
@@ -248,6 +250,8 @@ export default function Payment() {
             })
           }
           localStorage.setItem('mbti_paid', 'true')
+          // 触发登录状态刷新，让 UserMenu 更新积分
+          window.dispatchEvent(new Event('mbti-login-change'))
           navigate('/result')
         }
       } catch { /* ignore */ }
@@ -290,6 +294,9 @@ export default function Payment() {
           body: JSON.stringify({ phone, timestamp: recordTimestamp })
         })
         localStorage.setItem('mbti_paid', 'true')
+        localStorage.removeItem('mbti_pending_order')
+        // 触发登录状态刷新
+        window.dispatchEvent(new Event('mbti-login-change'))
         navigate('/result')
       }
     } catch {
