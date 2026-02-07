@@ -10,6 +10,8 @@ type PayData = {
   payType: string
   payInfo: string
   money?: string
+  recordTimestamp?: number
+  phone?: string
 }
 
 export default function Payment() {
@@ -38,6 +40,18 @@ export default function Payment() {
     const savedPin = localStorage.getItem('mbti_pin')
     if (savedPhone) setPhone(savedPhone)
     if (savedPin) setPin(savedPin)
+    
+    // 检查是否有未完成的订单（用户付款后返回）
+    const savedOrder = localStorage.getItem('mbti_pending_order')
+    if (savedOrder) {
+      try {
+        const order = JSON.parse(savedOrder)
+        setPayData(order)
+        setRecordTimestamp(order.recordTimestamp)
+        setStep('checking') // 直接进入检查状态
+        return // 不执行自动登录，直接检查订单
+      } catch { /* ignore */ }
+    }
     
     // 如果已有完整登录信息，自动提交（延迟执行确保状态已更新）
     if (savedPhone && savedPin && /^1[3-9]\d{9}$/.test(savedPhone) && /^\d{4}$/.test(savedPin)) {
@@ -191,6 +205,13 @@ export default function Payment() {
       if (!resp.ok) throw new Error(data.error || '创建订单失败')
       setPayData(data)
       setStep('pay')
+      
+      // 保存订单到 localStorage，用户付款返回后可以继续检查
+      localStorage.setItem('mbti_pending_order', JSON.stringify({
+        ...data,
+        recordTimestamp,
+        phone
+      }))
 
       if (data.payType === 'qrcode') {
         const url = await QRCode.toDataURL(data.payInfo, { width: 200 })
@@ -212,13 +233,18 @@ export default function Payment() {
         const resp = await fetch(`/api/zy/query-order?outTradeNo=${encodeURIComponent(payData.outTradeNo)}`)
         const data = await resp.json()
         if (data.paid) {
+          // 清除待处理订单
+          localStorage.removeItem('mbti_pending_order')
+          
           // 支付成功后，回调会自动增加积分
           // 这里使用积分查看当前记录
-          if (phone && recordTimestamp) {
+          const usePhone = phone || localStorage.getItem('mbti_phone')
+          const useTimestamp = recordTimestamp || payData.recordTimestamp
+          if (usePhone && useTimestamp) {
             await fetch('/api/user/use-credit', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ phone, timestamp: recordTimestamp })
+              body: JSON.stringify({ phone: usePhone, timestamp: useTimestamp })
             })
           }
           localStorage.setItem('mbti_paid', 'true')
@@ -273,6 +299,7 @@ export default function Payment() {
 
   // 普通用户退出（不支付）
   const exitWithoutPay = () => {
+    localStorage.removeItem('mbti_pending_order')
     navigate('/')
   }
 
