@@ -105,7 +105,7 @@ export default function Test() {
   const progress = questions.length ? ((currentIndex + 1) / questions.length) * 100 : 0
 
   const handleAnswer = (value: number) => {
-    if (isTransitioning || !currentQuestion) return
+    if (isTransitioning || isFinishing || !currentQuestion) return
 
     answersRef.current = { ...answersRef.current, [currentQuestion.id]: value }
     setAnswers(answersRef.current)
@@ -123,13 +123,14 @@ export default function Test() {
       localStorage.setItem('mbti_question_set', selectedSet || '48')
       setIsFinishing(true)
       setIsTransitioning(true)
-      navigate('/payment')
+      const target = '/payment'
+      navigate(target, { replace: true })
       if (finishTimeoutRef.current) {
         window.clearTimeout(finishTimeoutRef.current)
       }
       finishTimeoutRef.current = window.setTimeout(() => {
-        window.location.assign('/payment')
-      }, 1200)
+        window.location.assign(target)
+      }, 50)
     }
   }
 
