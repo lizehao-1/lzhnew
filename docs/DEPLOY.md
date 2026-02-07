@@ -1,78 +1,82 @@
-﻿# MBTI V2 部署文档
+# MBTI V2 / LZHNEW 部署与运维文档
 
-## 快速部署
+这份文档覆盖两件事：
+
+- `mbti.lizehao.asia` 的 MBTI 站点（历史遗留，不要随便动）
+- `lizehao.asia` 的主站（`lzhnew` 项目，当前主要开发目标）
+
+## TL;DR (最重要的几件事)
+
+- **主站 (main domain)**: `lizehao.asia` 绑定在 Cloudflare Pages 项目 `lzhnew`
+- **MBTI 子域名**: `mbti.lizehao.asia` 绑定在 Cloudflare Pages 项目 `mbti-test`（暂时不要动它）
+- **发布主站**: `npm run build` 后执行 `npx wrangler pages deploy dist --project-name=lzhnew --commit-dirty=true`
+- **Git 同步**: 主站对外仓库 remote 是 `lzhnew`（`lizehao-1/lzhnew`）
+- **中文“乱码/???”** 多数不是编码，是字体不支持中文；PowerShell 写文件也可能把编码写坏（见“编码与中文”）
+
+## 快速发布（主站）
+
+在 `mbti-v2/` 目录：
 
 ```bash
-cd mbti-v2
-
-# 1. 构建
 npm run build
-
-# 2. 部署到 Cloudflare Pages
-# 主站（lizehao.asia）
 npx wrangler pages deploy dist --project-name=lzhnew --commit-dirty=true
-
-# MBTI 站（mbti.lizehao.asia）
-# npx wrangler pages deploy dist --project-name=mbti-test --commit-dirty=true
-
-# 3. 提交到 GitHub
-git add -A
-git commit -m "描述"
-git push
 ```
 
-**注意**：当前 `lizehao.asia` 绑定在项目 `lzhnew`，MBTI 站点绑定在 `mbti-test`（子域名 `mbti.lizehao.asia`）。
+## 快速发布（MBTI 子站，默认不要动）
 
-## 环境配置
+```bash
+npm run build
+npx wrangler pages deploy dist --project-name=mbti-test --commit-dirty=true
+```
 
-### Cloudflare Pages 环境变量
+## 常用 ID / Key / 项目名（别搞混）
 
-在 Cloudflare Dashboard → Pages → 对应项目 → Settings → Environment variables 中配置：
+### Cloudflare Pages 项目名
 
-| 变量名 | 说明 |
-|--------|------|
-| ZY_PID | 志云付商户ID |
-| ZY_PRIVATE_KEY | 志云付私钥（RSA） |
-| ZY_PUBLIC_KEY | 志云付公钥（用于验签） |
-| ZY_API_BASE | 志云付API地址，默认 `http://pay.zy520888.com` |
-| ADMIN_KEY | 管理员密钥（用于手动添加积分，必须配置） |
+- `lzhnew`: 主站（`lizehao.asia`）
+- `mbti-test`: MBTI 子域名（`mbti.lizehao.asia`）
 
-### KV 命名空间
+### GitHub 仓库 remote
 
-KV 命名空间 ID: `0272b12877264d808bec5fbee5f4db93`
+这台机器上常见的 remote：
 
-绑定名称: `MBTI_USERS`
+- `origin`: `lizehao-1/mbti-v2`（老仓库）
+- `lzhnew`: `lizehao-1/lzhnew`（主站对外仓库）
+- `apple2`: `lizehao-1/v2-apple2`（开发分支仓库）
 
-## 常用 Key / ID / Skills
+查看方式：
 
-### Key / Env
+```bash
+git remote -v
+```
 
-- `ZY_PID`：志云付商户 ID
-- `ZY_PRIVATE_KEY`：志云付私钥
-- `ZY_PUBLIC_KEY`：志云付公钥
-- `ZY_API_BASE`：志云付 API Base
-- `ADMIN_KEY`：管理员密钥
+### Cloudflare 环境变量（Pages）
 
-### ID / 绑定
+在 Cloudflare Dashboard → Pages → 对应项目 → Settings → Environment variables 中配置。
 
-- Pages 项目名：`lzhnew`（主站）、`mbti-test`（MBTI）
-- 主域名：`lizehao.asia`
-- MBTI 子域名：`mbti.lizehao.asia`
-- Pages 域名：`lzhnew.pages.dev`、`mbti-test-a06.pages.dev`
-- KV 命名空间 ID：`0272b12877264d808bec5fbee5f4db93`
-- KV 绑定名：`MBTI_USERS`
-- D1 数据库名：`mbti`
-- D1 绑定名：`MBTI_DB`
+- `ADMIN_KEY`: 管理后台/管理接口使用的管理员密钥
+- `ZY_PID`: 志云付商户 ID
+- `ZY_PRIVATE_KEY`: 志云付私钥（RSA）
+- `ZY_PUBLIC_KEY`: 志云付公钥（用于验签）
+- `ZY_API_BASE`: 志云付 API base（默认 `http://pay.zy520888.com`）
 
-### Skills（常用操作）
+### 常见 KV/D1 资源（历史遗留）
 
-- Pages 部署：`wrangler pages deploy`
-- D1 管理：`wrangler d1 execute`
-- Admin API 加积分：`/api/admin/add-credits`
-- 用户查询：`/api/user/query`
-- 支付回调联调：`/api/zy/notify`
+- KV namespace id: `0272b12877264d808bec5fbee5f4db93`
+- KV binding name: `MBTI_USERS`
+- D1 db name: `mbti`
+- D1 binding name: `MBTI_DB`
 
-## 管理命令
+说明：现在主站在做“测试入口 + 报告展示”，支付/积分等仍属于 MBTI 项目的能力，后续是否迁移到主站再决定。
+
+### 常见 localStorage key（前端缓存用）
+
+- `lzh_locale`: 语言选择（`zh`/`en`）
+- `lzh_<test>_<len>_answers`: 各测试答题缓存（例如 `lzh_sjt_standard_answers`）
+
+说明：localStorage 用来做“刷新不丢进度”和“弱网继续做题”，不用于计费或权限。
+
+## 管理接口（MBTI 子站）
 
 ### 给用户添加积分
 
@@ -87,72 +91,77 @@ Invoke-RestMethod -Uri "https://mbti.lizehao.asia/api/admin/add-credits" -Method
 Invoke-RestMethod -Uri "https://mbti.lizehao.asia/api/user/query?phone=手机号&pin=密码" -Method GET
 ```
 
-## 项目结构
+## 编码与中文（非常关键）
 
-```
-mbti-v2/
-├── src/                    # 前端源码
-│   ├── pages/              # 页面组件
-│   │   ├── Home.tsx        # 首页
-│   │   ├── Test.tsx        # 测试页
-│   │   ├── Payment.tsx     # 支付页
-│   │   ├── Result.tsx      # 结果页
-│   │   ├── History.tsx     # 历史记录
-│   │   └── Recharge.tsx    # 充值页
-│   ├── components/         # 公共组件
-│   └── data/               # 数据文件
-├── functions/              # Cloudflare Functions (后端API)
-│   └── api/
-│       ├── zy/             # 支付相关
-│       │   ├── create-order.js
-│       │   ├── notify.js
-│       │   └── query-order.js
-│       ├── user/           # 用户相关
-│       │   ├── save.js
-│       │   ├── query.js
-│       │   └── use-credit.js
-│       └── admin/          # 管理接口
-│           └── add-credits.js
-├── dist/                   # 构建输出
-└── public/                 # 静态资源
-```
+你看到的“中文变成 `????` / 菱形问号”主要有两类原因。
 
-## 支付流程
+### 1) 字体不支持中文（网页里最常见）
 
-1. 用户点击支付 → `create-order.js` 创建订单
-2. 用户扫码/跳转支付
-3. 支付成功 → 志云付调用 `notify.js` 回调 → 增加用户积分
-4. 前端轮询 `query-order.js` 检测支付状态
-5. 检测到支付成功 → 等待3秒 → 使用积分 → 跳转结果页
+现象：英文正常、中文全部变成 `????` 或方框；刷新很多次也不变。
 
-## 积分系统
+原因：页面用了某个装饰字体/展示字体，但这个字体不包含 CJK 字形，浏览器没能正确回退到系统中文字体。
 
-| 套餐 | 价格 | 积分 |
-|------|------|------|
-| 默认 | ¥1 | 3次 |
-| RECHARGE_3 | ¥1 | 3次 |
-| RECHARGE_10 | ¥3 | 10次 |
-| RECHARGE_30 | ¥8 | 30次 |
+处理：
 
-## 成功经验 / 乱码排查总结
+- 在 CSS `font-family` 里加中文字体回退：`PingFang SC` / `Microsoft YaHei` / `Noto Sans SC` 等。
+- 保证关键文本区域不要强制用只含拉丁字形的 display font。
 
-1. 乱码的本质是编码错误，常见是文件被保存成 UTF-16 或错误 ANSI。
-2. 修复方法：用支持编码的编辑器“另存为 UTF-8（建议带 BOM）”，再重新打开确认。
-3. 验证方法：文件头应为 `EF BB BF`（UTF-8 BOM），不要出现 `FF FE`（UTF-16）。
-4. 避免问题：统一使用 UTF-8 保存所有 Markdown/TS/JSON 文件，不要用会默认改编码的工具保存。
+### 2) 文件被错误编码写入（本地编辑/脚本最常见）
 
-## Git 配置
+现象：代码/文档里本来中文正常，改完后 Git diff 里出现乱码，或者线上显示奇怪字符。
 
-代理设置（如需）：
-```bash
-git config --global http.proxy socks5://127.0.0.1:10808
-git config --global https.proxy socks5://127.0.0.1:10808
+常见坑：
+
+- PowerShell 的 `Out-File` 默认会写成 UTF-16LE，写到 `.ts/.md` 后工具链可能异常。
+- 有些编辑器用“ANSI/GBK”保存，导致 UTF-8 内容被破坏。
+
+建议规则：
+
+- 优先用 VSCode，确保文件以 UTF-8 保存。
+- PowerShell 写文件时显式指定编码：
+
+```powershell
+Set-Content -Encoding utf8 -Path .\docs\DEPLOY.md -Value $text
+# 或
+Out-File -Encoding utf8 -FilePath .\docs\DEPLOY.md -InputObject $text
 ```
 
-GitHub 仓库: `lizehao-1/mbti-v2`
+如果必须在代码里放大量中文但担心写坏：可以用 `\uXXXX` 转义作为兜底（可读性差但稳定）。
 
-## 域名
+## 性能与技术选型（题量/图片为什么可选）
 
-- 主域名: `lizehao.asia` → Pages 项目 `lzhnew`
-- MBTI 子域名: `mbti.lizehao.asia` → Pages 项目 `mbti-test`
-- Pages 域名: `lzhnew.pages.dev`、`mbti-test-a06.pages.dev`
+### 题目数量是否影响性能？
+
+会影响，但主要影响在：
+
+- 首屏加载体积：题库如果全部打进主 bundle，会让页面打开慢。
+- 交互时延：题目过多会让渲染、滚动、状态更新更重。
+
+当前方案：
+
+- 题库按测试/长度拆分，用户选择后动态 `import()` 加载（只下载用到的那份）。
+- 答题过程中只渲染当前题（减少 DOM 压力）。
+
+结论：即使“完整报告/长题库”存在，也不会拖慢没选它的人。
+
+### 图片多会不会拖慢？
+
+会拖慢，尤其外链大图。
+
+当前策略：
+
+- 优先使用 `public/` 下的本地小图（可控大小、走 CDN 缓存）。
+- 把报告页的大图延迟到结果页再加载（避免首屏变慢）。
+
+### 子域名变慢的常见原因
+
+- 浏览器缓存：Pages 新版本已上线，但本地仍用旧 JS/CSS（`Ctrl+F5` 或无痕窗口）。
+- DNS 刚改/刚绑定：传播需要时间，部分地区走旧记录。
+- 资源没命中缓存：图片太大，首次访问确实慢。
+
+## 故障排查（最快）
+
+- 访问 `lizehao.asia` 仍是旧页面：`Ctrl+F5`，再无痕窗口；还不行就看 `View Source` 判断是否更新。
+- 中文全是 `????`：优先检查 CSS 字体回退；其次检查文件是否被写成 UTF-16/ANSI。
+- Pages 部署后访问 404：确认 `--project-name` 是否正确（主站 `lzhnew`）。
+

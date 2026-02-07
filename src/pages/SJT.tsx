@@ -7,6 +7,28 @@ import { ChoiceQuestion, QuizLength, QuizQuestion, QuizAnswers } from '../tests/
 
 type Metric = 'collaboration' | 'execution' | 'assertiveness' | 'risk'
 
+type Tier = 'low' | 'mid' | 'high'
+
+function tierOf(pct: number): Tier {
+  if (pct >= 70) return 'high'
+  if (pct >= 45) return 'mid'
+  return 'low'
+}
+
+function metricMax(len: QuizLength) {
+  // Keep normalization stable across banks.
+  return len === 'short' ? 12 : len === 'standard' ? 24 : 30
+}
+
+function normalizeMetric(raw: number, max: number) {
+  const clamped = Math.max(-max, Math.min(max, raw))
+  return Math.round(((clamped + max) / (2 * max)) * 100)
+}
+
+function getMetricTextKey(metric: Metric, tier: Tier, kind: 'title' | 'desc' | 'hint') {
+  return `sjt_${metric}_${tier}_${kind}` as const
+}
+
 type SJTResult = {
   metrics: Record<Metric, number>
 }
@@ -108,14 +130,31 @@ export default function SJT() {
   }
 
   if (result) {
-    const items: Array<{ k: Metric; label: string; v: number }> = [
-      { k: 'collaboration', label: t('sjt_metric_collaboration'), v: result.metrics.collaboration },
-      { k: 'execution', label: t('sjt_metric_execution'), v: result.metrics.execution },
-      { k: 'assertiveness', label: t('sjt_metric_assertiveness'), v: result.metrics.assertiveness },
-      { k: 'risk', label: t('sjt_metric_risk'), v: result.metrics.risk },
+    const max = metricMax((len || 'standard') as QuizLength)
+    const base: Array<{ k: Metric; label: string; raw: number }> = [
+      { k: 'collaboration', label: t('sjt_metric_collaboration'), raw: result.metrics.collaboration },
+      { k: 'execution', label: t('sjt_metric_execution'), raw: result.metrics.execution },
+      { k: 'assertiveness', label: t('sjt_metric_assertiveness'), raw: result.metrics.assertiveness },
+      { k: 'risk', label: t('sjt_metric_risk'), raw: result.metrics.risk },
     ]
 
-    const maxAbs = Math.max(1, ...items.map((i) => Math.abs(i.v)))
+    const items: Array<{ k: Metric; label: string; raw: number; pct: number; tier: Tier }> = base.map((it) => {
+      const pct = normalizeMetric(it.raw, max)
+      const tier = tierOf(pct)
+      return { ...it, pct, tier }
+    })
+
+    const strengths = items
+      .slice()
+      .sort((a, b) => b.pct - a.pct)
+      .slice(0, 2)
+      .map((i) => i.label)
+
+    const weakest = items
+      .slice()
+      .sort((a, b) => a.pct - b.pct)
+      .slice(0, 1)
+      .map((i) => i.label)
 
     return (
       <div className="mx-auto max-w-3xl px-4 py-10 sm:py-14 page-enter">
@@ -126,22 +165,80 @@ export default function SJT() {
           </h1>
           <p className="mt-3 text-sm sm:text-base text-slate-600 leading-relaxed">{t('sjt_result_desc')}</p>
 
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4">
+              <div className="text-xs font-semibold text-emerald-700">{t('report_strengths')}</div>
+              <div className="mt-2 text-sm text-emerald-900 font-bold">{strengths.join(' · ')}</div>
+              <div className="mt-1 text-xs text-emerald-700">{t('report_strengths_hint')}</div>
+            </div>
+            <div className="rounded-2xl border border-amber-100 bg-amber-50/50 p-4">
+              <div className="text-xs font-semibold text-amber-700">{t('report_risks')}</div>
+              <div className="mt-2 text-sm text-amber-900 font-bold">{weakest.join(' · ')}</div>
+              <div className="mt-1 text-xs text-amber-700">{t('report_risks_hint')}</div>
+            </div>
+          </div>
+
           <div className="mt-6 space-y-3">
-            {items.map((it) => {
-              const pct = Math.round((Math.abs(it.v) / maxAbs) * 100)
-              return (
-                <div key={it.k} className="flex items-center gap-3">
-                  <div className="w-28 text-xs font-semibold text-slate-600">{it.label}</div>
-                  <div className="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-slate-900"
-                      style={{ width: `${pct}%`, opacity: it.v >= 0 ? 1 : 0.5 }}
-                    />
+            {items.map((it) => (
+              <div key={it.k} className="rounded-2xl border border-slate-200/60 bg-white/70 p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="text-xs font-semibold text-slate-500">{it.label}</div>
+                    <div className="mt-1 text-sm font-bold text-slate-900">
+                      {t(getMetricTextKey(it.k, it.tier, 'title') as never)}
+                    </div>
+                    <div className="mt-1 text-xs text-slate-500">
+                      {t(getMetricTextKey(it.k, it.tier, 'desc') as never)}
+                    </div>
                   </div>
-                  <div className="w-12 text-xs text-slate-500">{it.v}</div>
+                  <div className="text-right">
+                    <div className="text-2xl font-black text-slate-950">{it.pct}</div>
+                    <div className="text-xs text-slate-400">/ 100</div>
+                  </div>
                 </div>
-              )
-            })}
+                <div className="mt-3 h-2 rounded-full bg-slate-100 overflow-hidden">
+                  <div className="h-full rounded-full bg-slate-900" style={{ width: `${it.pct}%` }} />
+                </div>
+                <div className="mt-2 text-xs text-slate-500">
+                  {t(getMetricTextKey(it.k, it.tier, 'hint') as never)}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-8 grid gap-4">
+            <div className="mbti-card p-5">
+              <div className="text-sm font-bold text-slate-900">{t('report_interviewer_view')}</div>
+              <div className="mt-2 grid gap-2 text-sm text-slate-600">
+                <div>• {t('report_interviewer_1')}</div>
+                <div>• {t('report_interviewer_2')}</div>
+                <div>• {t('report_interviewer_3')}</div>
+              </div>
+            </div>
+
+            <div className="mbti-card p-5">
+              <div className="text-sm font-bold text-slate-900">{t('report_templates')}</div>
+              <div className="mt-2 text-sm text-slate-600">{t('report_templates_desc')}</div>
+              <div className="mt-4 grid gap-3">
+                <div className="rounded-2xl border border-slate-200/60 bg-white/70 p-4">
+                  <div className="text-xs font-semibold text-slate-500">{t('tpl_conflict_title')}</div>
+                  <pre className="mt-2 whitespace-pre-wrap text-xs text-slate-700">{t('tpl_conflict_body')}</pre>
+                </div>
+                <div className="rounded-2xl border border-slate-200/60 bg-white/70 p-4">
+                  <div className="text-xs font-semibold text-slate-500">{t('tpl_badnews_title')}</div>
+                  <pre className="mt-2 whitespace-pre-wrap text-xs text-slate-700">{t('tpl_badnews_body')}</pre>
+                </div>
+              </div>
+            </div>
+
+            <div className="mbti-card p-5">
+              <div className="text-sm font-bold text-slate-900">{t('report_training')}</div>
+              <div className="mt-2 grid gap-2 text-sm text-slate-600">
+                <div>1. {t('train_1')}</div>
+                <div>2. {t('train_2')}</div>
+                <div>3. {t('train_3')}</div>
+              </div>
+            </div>
           </div>
 
           <div className="mt-6 flex flex-wrap gap-3">
