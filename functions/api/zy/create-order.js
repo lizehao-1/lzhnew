@@ -42,6 +42,7 @@ export async function onRequest(context) {
 
     const payload = await request.json().catch(() => ({}))
     const mbtiResult = payload.mbtiResult
+    const phone = payload.phone || ''  // 手机号
     const type = payload.type || 'alipay'
     const apiMethod = payload.method || 'web'
 
@@ -49,7 +50,10 @@ export async function onRequest(context) {
       return new Response(JSON.stringify({ error: 'mbtiResult required' }), { status: 400, headers })
     }
 
-    const outTradeNo = `MBTI${Date.now()}${Math.floor(Math.random() * 1000)}`
+    // 订单号格式：MBTI_手机号_时间戳_随机数（用于回调时识别用户）
+    const outTradeNo = phone 
+      ? `MBTI_${phone}_${Date.now()}_${Math.floor(Math.random() * 1000)}`
+      : `MBTI_${Date.now()}_${Math.floor(Math.random() * 1000)}`
     const now = Math.floor(Date.now() / 1000).toString()
     const clientip = request.headers.get('cf-connecting-ip') || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || '127.0.0.1'
     const ua = request.headers.get('user-agent') || ''

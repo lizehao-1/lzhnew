@@ -5,13 +5,14 @@ import { personalities } from '../data/personalities'
 type Record = {
   result: string
   timestamp: number
-  viewed?: boolean  // 是否已使用积分查看
+  viewed?: boolean
   questionSet?: string
 }
 
 export default function History() {
   const navigate = useNavigate()
   const [phone, setPhone] = useState('')
+  const [pin, setPin] = useState('')
   const [phoneError, setPhoneError] = useState('')
   const [loading, setLoading] = useState(false)
   const [records, setRecords] = useState<Record[] | null>(null)
@@ -24,10 +25,21 @@ export default function History() {
     return ''
   }
 
+  const validatePin = (value: string) => {
+    if (!value) return '请输入PIN码'
+    if (!/^\d{4}$/.test(value)) return 'PIN码必须是4位数字'
+    return ''
+  }
+
   const handleQuery = async () => {
-    const err = validatePhone(phone)
-    if (err) {
-      setPhoneError(err)
+    const phoneErr = validatePhone(phone)
+    if (phoneErr) {
+      setPhoneError(phoneErr)
+      return
+    }
+    const pinErr = validatePin(pin)
+    if (pinErr) {
+      setPhoneError(pinErr)
       return
     }
     setPhoneError('')
@@ -35,12 +47,22 @@ export default function History() {
     setNotFound(false)
 
     try {
-      const resp = await fetch(`/api/user/query?phone=${encodeURIComponent(phone)}`)
+      const resp = await fetch(`/api/user/query?phone=${encodeURIComponent(phone)}&pin=${encodeURIComponent(pin)}`)
       const data = await resp.json()
       
+      if (data.error === 'PIN码错误') {
+        setPhoneError('PIN码错误')
+        setRecords(null)
+        setLoading(false)
+        return
+      }
+      
       if (data.found && data.records?.length > 0) {
-        setRecords(data.records.reverse()) // 最新的在前
+        setRecords(data.records.reverse())
         setCredits(data.credits || 0)
+        // 保存到本地，方便后续使用
+        localStorage.setItem('mbti_phone', phone)
+        localStorage.setItem('mbti_pin', pin)
       } else {
         setNotFound(true)
         setRecords(null)
@@ -54,22 +76,18 @@ export default function History() {
   }
 
   const viewResult = async (record: Record) => {
-    // 如果已经查看过，直接跳转
     if (record.viewed) {
       localStorage.setItem('mbti_result', record.result)
       localStorage.setItem('mbti_paid', 'true')
-      localStorage.setItem('mbti_phone', phone)
       navigate('/result')
       return
     }
 
-    // 如果没有积分，提示需要支付
     if (credits <= 0) {
       alert('积分不足，请先支付后查看完整报告')
       return
     }
 
-    // 使用积分查看
     try {
       const resp = await fetch('/api/user/use-credit', {
         method: 'POST',
@@ -80,14 +98,12 @@ export default function History() {
       
       if (data.success) {
         setCredits(data.credits)
-        // 更新本地记录状态
         setRecords(prev => prev?.map(r => 
           r.timestamp === record.timestamp ? { ...r, viewed: true } : r
         ) || null)
         
         localStorage.setItem('mbti_result', record.result)
         localStorage.setItem('mbti_paid', 'true')
-        localStorage.setItem('mbti_phone', phone)
         navigate('/result')
       } else if (data.needPayment) {
         alert('积分不足，请先支付后查看完整报告')
@@ -115,7 +131,7 @@ export default function History() {
     <div className="mx-auto max-w-xl px-4 py-10">
       <div className="mbti-card p-6">
         <h1 className="text-xl font-black text-slate-950 text-center mb-2">查询历史记录</h1>
-        <p className="text-xs text-slate-500 text-center mb-6">输入手机号查看之前的测试结果</p>
+        <p className="text-xs text-slate-500 text-center mb-6">输入手机号和PIN码查看之前的测试结果</p>
 
         <div className="space-y-3 mb-6">
           <input
@@ -123,6 +139,13 @@ export default function History() {
             value={phone}
             onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 11))}
             placeholder="请输入手机号"
+            className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-slate-400 focus:outline-none text-center text-lg tracking-widest"
+          />
+          <input
+            type="tel"
+            value={pin}
+            onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+            placeholder="请输入4位PIN码"
             className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-slate-400 focus:outline-none text-center text-lg tracking-widest"
             onKeyDown={(e) => e.key === 'Enter' && handleQuery()}
           />
@@ -141,7 +164,6 @@ export default function History() {
 
         {records && records.length > 0 && (
           <div className="space-y-3">
-            {/* 积分显示 */}
             <div className="flex items-center justify-between p-3 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200">
               <span className="text-sm text-amber-800">剩余查看次数</span>
               <span className="text-xl font-black text-amber-600">{credits}</span>

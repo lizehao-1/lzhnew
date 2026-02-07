@@ -1,8 +1,9 @@
 /**
  * 查询用户历史记录
- * GET /api/user/query?phone=xxx
+ * GET /api/user/query?phone=xxx&pin=xxxx
  * 
  * 返回用户的所有测试记录和剩余积分
+ * 需要PIN码验证
  */
 export async function onRequestGet(context) {
   const { request, env } = context
@@ -10,6 +11,7 @@ export async function onRequestGet(context) {
   try {
     const url = new URL(request.url)
     const phone = url.searchParams.get('phone')
+    const pin = url.searchParams.get('pin')
     
     if (!phone) {
       return Response.json({ error: '缺少手机号' }, { status: 400 })
@@ -28,6 +30,12 @@ export async function onRequestGet(context) {
     }
     
     const userData = JSON.parse(data)
+    
+    // 验证PIN码
+    if (userData.pin && userData.pin !== pin) {
+      return Response.json({ error: 'PIN码错误', found: true, needPin: true }, { status: 401 })
+    }
+    
     return Response.json({ 
       found: true, 
       records: userData.records,

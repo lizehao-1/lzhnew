@@ -1,6 +1,8 @@
 /**
  * Cloudflare Pages Function: 支付回调通知
  * GET/POST /api/zy/notify
+ * 
+ * 支付成功后自动增加用户积分
  */
 
 export async function onRequest(context) {
@@ -44,12 +46,46 @@ export async function onRequest(context) {
 
     console.log('Payment success:', params.out_trade_no)
     
+    // 从订单号中提取手机号（格式：MBTI_手机号_时间戳）
+    const outTradeNo = params.out_trade_no || ''
+    const parts = outTradeNo.split('_')
+    if (parts.length >= 2 && parts[0] === 'MBTI') {
+      const phone = parts[1]
+      if (/^1[3-9]\d{9}$/.test(phone)) {
+        // 增加用户积分
+        await addCredits(env, phone)
+        console.log('Credits added for phone:', phone)
+      }
+    }
+    
     // 返回 success 告诉志云付已收到通知
     return new Response('success', { status: 200 })
 
   } catch (err) {
     console.error('Notify error:', err.message)
     return new Response('error', { status: 500 })
+  }
+}
+
+// 增加用户积分
+async function addCredits(env, phone) {
+  try {
+    const data = await env.MBTI_USERS?.get(phone)
+    if (!data) {
+      // 用户不存在，创建新用户
+      const userData = { phone, credits: 3, records: [] }
+      await env.MBTI_USERS?.put(phone, JSON.stringify(userData))
+      return
+    }
+    
+    const userData = JSON.parse(data)
+    if (typeof userData.credits !== 'number') {
+      userData.credits = 0
+    }
+    userData.credits += 3
+    await env.MBTI_USERS?.put(phone, JSON.stringify(userData))
+  } catch (err) {
+    console.error('Add credits error:', err.message)
   }
 }
 

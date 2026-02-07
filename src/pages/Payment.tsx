@@ -16,13 +16,13 @@ export default function Payment() {
   const navigate = useNavigate()
   const [result, setResult] = useState<string | null>(null)
   const [phone, setPhone] = useState('')
+  const [pin, setPin] = useState('')
   const [phoneError, setPhoneError] = useState('')
   const [step, setStep] = useState<'phone' | 'checking_credits' | 'intro' | 'pay' | 'checking'>('phone')
   const [payData, setPayData] = useState<PayData | null>(null)
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const [, setCredits] = useState(0)
   const [recordTimestamp, setRecordTimestamp] = useState<number | null>(null)
 
   useEffect(() => {
@@ -33,11 +33,11 @@ export default function Payment() {
     }
     setResult(savedResult)
     
-    // 恢复之前输入的手机号
+    // 恢复之前输入的手机号和PIN
     const savedPhone = localStorage.getItem('mbti_phone')
-    if (savedPhone) {
-      setPhone(savedPhone)
-    }
+    const savedPin = localStorage.getItem('mbti_pin')
+    if (savedPhone) setPhone(savedPhone)
+    if (savedPin) setPin(savedPin)
   }, [navigate])
 
   const benefits = useMemo(() => [
@@ -54,14 +54,26 @@ export default function Payment() {
     return ''
   }
 
+  const validatePin = (value: string) => {
+    if (!value) return '请输入4位PIN码'
+    if (!/^\d{4}$/.test(value)) return 'PIN码必须是4位数字'
+    return ''
+  }
+
   const handlePhoneSubmit = async () => {
-    const err = validatePhone(phone)
-    if (err) {
-      setPhoneError(err)
+    const phoneErr = validatePhone(phone)
+    if (phoneErr) {
+      setPhoneError(phoneErr)
+      return
+    }
+    const pinErr = validatePin(pin)
+    if (pinErr) {
+      setPhoneError(pinErr)
       return
     }
     setPhoneError('')
     localStorage.setItem('mbti_phone', phone)
+    localStorage.setItem('mbti_pin', pin)
     setStep('checking_credits')
     
     try {
@@ -71,12 +83,17 @@ export default function Payment() {
       const saveResp = await fetch('/api/user/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, result, answers: answers ? JSON.parse(answers) : {}, questionSet })
+        body: JSON.stringify({ phone, pin, result, answers: answers ? JSON.parse(answers) : {}, questionSet })
       })
       const saveData = await saveResp.json()
       
+      if (saveData.error === 'PIN码错误') {
+        setPhoneError('PIN码错误，请重新输入')
+        setStep('phone')
+        return
+      }
+      
       if (saveData.success) {
-        setCredits(saveData.credits || 0)
         setRecordTimestamp(saveData.timestamp)
         
         // 如果有积分，直接使用积分查看
@@ -106,7 +123,6 @@ export default function Payment() {
         localStorage.setItem('mbti_paid', 'true')
         navigate('/result')
       } else if (data.needPayment) {
-        setCredits(0)
         setStep('intro')
       } else {
         setStep('intro')
@@ -124,7 +140,7 @@ export default function Payment() {
       const resp = await fetch('/api/zy/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mbtiResult: result, type: 'alipay', method: 'web', action: 'create' }),
+        body: JSON.stringify({ mbtiResult: result, phone, type: 'alipay', method: 'web', action: 'create' }),
       })
       const data = await resp.json()
       if (!resp.ok) throw new Error(data.error || '创建订单失败')
@@ -151,22 +167,14 @@ export default function Payment() {
         const resp = await fetch(`/api/zy/query-order?outTradeNo=${encodeURIComponent(payData.outTradeNo)}`)
         const data = await resp.json()
         if (data.paid) {
-          // 标记服务器端已支付（增加积分）
-          if (phone) {
-            const markResp = await fetch('/api/user/mark-paid', {
+          // 支付成功后，回调会自动增加积分
+          // 这里使用积分查看当前记录
+          if (phone && recordTimestamp) {
+            await fetch('/api/user/use-credit', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ phone })
+              body: JSON.stringify({ phone, timestamp: recordTimestamp })
             })
-            const markData = await markResp.json()
-            if (markData.success && recordTimestamp) {
-              // 使用积分查看当前记录
-              await fetch('/api/user/use-credit', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ phone, timestamp: recordTimestamp })
-              })
-            }
           }
           localStorage.setItem('mbti_paid', 'true')
           navigate('/result')
@@ -235,7 +243,7 @@ export default function Payment() {
           <div className="text-4xl font-black text-slate-950">{result}</div>
         </div>
 
-        {/* 步骤1: 输入手机号 */}
+        {/* 步骤1: 输入手机号和PIN码 */}
         {step === 'phone' && (
           <div>
             <div className="text-center mb-4">
@@ -250,6 +258,16 @@ export default function Payment() {
                 placeholder="请输入手机号"
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-slate-400 focus:outline-none text-center text-lg tracking-widest"
               />
+              <div>
+                <input
+                  type="tel"
+                  value={pin}
+                  onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                  placeholder="设置4位PIN码（用于验证身份）"
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-slate-400 focus:outline-none text-center text-lg tracking-widest"
+                />
+                <p className="text-xs text-slate-400 mt-1 text-center">首次使用设置PIN码，之后查询需要输入</p>
+              </div>
               {phoneError && <p className="text-xs text-red-500 text-center">{phoneError}</p>}
               <button className="w-full mbti-button-primary" onClick={handlePhoneSubmit}>
                 继续
