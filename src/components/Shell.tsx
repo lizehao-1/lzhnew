@@ -6,8 +6,12 @@ import { useI18n } from '../i18n'
 function LogoMark({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div className="flex items-center gap-2">
-      <div className="h-9 w-9 sm:h-11 sm:w-11 rounded-full bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 text-white grid place-items-center shadow-[0_18px_40px_rgba(2,6,23,0.28)] ring-1 ring-white/10">
-        <span className="font-black tracking-tight text-xs sm:text-sm">MB</span>
+      <div className="relative h-10 w-10 sm:h-11 sm:w-11 rounded-2xl bg-white/85 border border-slate-200 shadow-[0_14px_32px_rgba(2,6,23,0.12)] overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-white via-slate-50 to-slate-100" />
+        <div className="absolute inset-0 ring-1 ring-white/70" />
+        <div className="relative h-full w-full grid place-items-center">
+          <span className="text-[11px] sm:text-xs font-black tracking-tight text-slate-900">MB</span>
+        </div>
       </div>
       <div className="leading-tight hidden sm:block">
         <div className="text-sm font-semibold text-slate-900">{title}</div>
