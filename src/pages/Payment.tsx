@@ -26,7 +26,7 @@ export default function Payment() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [recordTimestamp, setRecordTimestamp] = useState<number | null>(null)
-  const [pollCount, setPollCount] = useState(0)
+  const [, setPollCount] = useState(0)
   const MAX_POLLS = 150 // 最多轮询150次（5分钟）
 
   useEffect(() => {

@@ -27,6 +27,7 @@ git push
 | ZY_PRIVATE_KEY | 志云付私钥（RSA） |
 | ZY_PUBLIC_KEY | 志云付公钥（用于验签） |
 | ZY_API_BASE | 志云付API地址，默认 `http://pay.zy520888.com` |
+| ADMIN_KEY | 管理员密钥（用于手动添加积分，必须配置） |
 
 ### KV 命名空间
 
@@ -39,7 +40,8 @@ KV 命名空间 ID: `0272b12877264d808bec5fbee5f4db93`
 ### 给用户添加积分
 
 ```powershell
-Invoke-RestMethod -Uri "https://mbti-test-a06.pages.dev/api/admin/add-credits" -Method POST -ContentType "application/json" -Body '{"phone":"手机号","credits":积分数量,"adminKey":"mbti-admin-2026"}'
+# adminKey 需要与 Cloudflare 环境变量中配置的 ADMIN_KEY 一致
+Invoke-RestMethod -Uri "https://mbti-test-a06.pages.dev/api/admin/add-credits" -Method POST -ContentType "application/json" -Body '{"phone":"手机号","credits":积分数量,"adminKey":"你的管理员密钥"}'
 ```
 
 ### 查询用户数据

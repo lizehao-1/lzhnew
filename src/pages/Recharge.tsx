@@ -27,7 +27,7 @@ export default function Recharge() {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const [pollCount, setPollCount] = useState(0)
+  const [, setPollCount] = useState(0)
   const MAX_POLLS = 150 // 最多轮询150次（5分钟）
 
   // 从 localStorage 获取登录信息
