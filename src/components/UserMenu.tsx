@@ -35,14 +35,20 @@ export default function UserMenu() {
     checkLoginStatus()
   }, [])
 
-  // 页面切换时刷新登录状态和积分
+  // 页面切换时刷新登录状态和积分（延迟执行确保数据已更新）
   useEffect(() => {
-    checkLoginStatus()
+    const timer = setTimeout(() => {
+      checkLoginStatus()
+    }, 300)
+    return () => clearTimeout(timer)
   }, [location.pathname])
 
   // 监听自定义登录事件（同一页面内其他组件触发）
   useEffect(() => {
-    const handleLoginChange = () => checkLoginStatus()
+    const handleLoginChange = () => {
+      // 延迟执行，确保后端数据已更新
+      setTimeout(() => checkLoginStatus(), 300)
+    }
     window.addEventListener('mbti-login-change', handleLoginChange)
     return () => window.removeEventListener('mbti-login-change', handleLoginChange)
   }, [])
