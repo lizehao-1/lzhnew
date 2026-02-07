@@ -27,6 +27,8 @@ export default function Recharge() {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [pollCount, setPollCount] = useState(0)
+  const MAX_POLLS = 150 // 最多轮询150次（5分钟）
 
   // 从 localStorage 获取登录信息
   useEffect(() => {
@@ -93,11 +95,22 @@ export default function Recharge() {
   useEffect(() => {
     if (!payData) return
     const timer = setInterval(async () => {
+      // 超时检查
+      setPollCount(prev => {
+        if (prev >= MAX_POLLS) {
+          setError('支付超时，请刷新页面重试或联系客服')
+          setStep('select')
+          return prev
+        }
+        return prev + 1
+      })
+      
       try {
         const resp = await fetch(`/api/zy/query-order?outTradeNo=${encodeURIComponent(payData.outTradeNo)}`)
         const data = await resp.json()
         if (data.paid) {
-          // 支付成功，刷新积分
+          // 支付成功，等待2秒让回调执行完再刷新积分
+          await new Promise(r => setTimeout(r, 2000))
           if (phone && pin) {
             await fetchCredits(phone, pin)
           }

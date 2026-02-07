@@ -9,8 +9,11 @@ export async function onRequestPost(context) {
   try {
     const { phone, credits, adminKey } = await request.json()
     
-    // 简单的管理员密钥验证（你可以在Cloudflare环境变量中设置ADMIN_KEY）
-    const ADMIN_KEY = env.ADMIN_KEY || 'mbti-admin-2026'
+    // 管理员密钥验证（必须在Cloudflare环境变量中设置ADMIN_KEY）
+    const ADMIN_KEY = env.ADMIN_KEY
+    if (!ADMIN_KEY) {
+      return Response.json({ error: '服务器未配置管理员密钥' }, { status: 500 })
+    }
     if (adminKey !== ADMIN_KEY) {
       return Response.json({ error: '无权限' }, { status: 403 })
     }

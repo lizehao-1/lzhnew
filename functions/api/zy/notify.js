@@ -46,8 +46,17 @@ export async function onRequest(context) {
 
     console.log('Payment success:', params.out_trade_no)
     
-    // 从订单号中提取手机号（格式：MBTI_手机号_时间戳）
     const outTradeNo = params.out_trade_no || ''
+    
+    // 幂等性检查：防止重复回调导致重复增加积分
+    const orderKey = `ORDER_${outTradeNo}`
+    const existingOrder = await env.MBTI_USERS?.get(orderKey)
+    if (existingOrder) {
+      console.log('Order already processed, skipping:', outTradeNo)
+      return new Response('success', { status: 200 })
+    }
+    
+    // 从订单号中提取手机号（格式：MBTI_手机号_时间戳_随机数）
     const paramValue = params.param || ''  // 包含 RECHARGE_积分数 或 MBTI类型
     const parts = outTradeNo.split('_')
     if (parts.length >= 2 && parts[0] === 'MBTI') {
@@ -64,6 +73,14 @@ export async function onRequest(context) {
         // 增加用户积分
         await addCredits(env, phone, creditsToAdd)
         console.log('Credits added for phone:', phone, 'amount:', creditsToAdd)
+        
+        // 标记订单已处理（防止重复回调）
+        await env.MBTI_USERS?.put(orderKey, JSON.stringify({ 
+          processed: true, 
+          phone,
+          credits: creditsToAdd,
+          time: Date.now() 
+        }))
       }
     }
     

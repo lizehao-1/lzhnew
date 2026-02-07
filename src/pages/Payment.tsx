@@ -26,6 +26,8 @@ export default function Payment() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [recordTimestamp, setRecordTimestamp] = useState<number | null>(null)
+  const [pollCount, setPollCount] = useState(0)
+  const MAX_POLLS = 150 // 最多轮询150次（5分钟）
 
   useEffect(() => {
     const savedResult = localStorage.getItem('mbti_result')
@@ -233,30 +235,54 @@ export default function Payment() {
     let paymentConfirmed = false
     
     const timer = setInterval(async () => {
+      // 超时检查
+      setPollCount(prev => {
+        if (prev >= MAX_POLLS) {
+          setError('支付超时，请刷新页面重试或联系客服')
+          setStep('intro')
+          return prev
+        }
+        return prev + 1
+      })
+      
       try {
         const resp = await fetch(`/api/zy/query-order?outTradeNo=${encodeURIComponent(payData.outTradeNo)}`)
         const data = await resp.json()
         
         if (data.paid && !paymentConfirmed) {
           paymentConfirmed = true
-          // 支付成功，等待3秒让回调执行完
-          setTimeout(async () => {
-            const usePhone = phone || localStorage.getItem('mbti_phone') || ''
-            const useTimestamp = recordTimestamp || payData.recordTimestamp
+          // 支付成功，等待2秒让回调执行完，然后重试获取积分
+          const usePhone = phone || localStorage.getItem('mbti_phone') || ''
+          const useTimestamp = recordTimestamp || payData.recordTimestamp
+          
+          // 重试机制：最多尝试3次使用积分
+          const tryUseCredit = async (retries = 3) => {
+            if (!usePhone || !useTimestamp) return
             
-            if (usePhone && useTimestamp) {
-              await fetch('/api/user/use-credit', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ phone: usePhone, timestamp: useTimestamp })
-              })
+            for (let i = 0; i < retries; i++) {
+              await new Promise(r => setTimeout(r, 2000)) // 等待2秒
+              try {
+                const creditResp = await fetch('/api/user/use-credit', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ phone: usePhone, timestamp: useTimestamp })
+                })
+                const creditData = await creditResp.json()
+                if (creditData.success) return true
+                if (creditData.needPayment) {
+                  // 积分还没到账，继续等待
+                  continue
+                }
+              } catch { /* 继续重试 */ }
             }
-            
-            localStorage.removeItem('mbti_pending_order')
-            localStorage.setItem('mbti_paid', 'true')
-            window.dispatchEvent(new Event('mbti-login-change'))
-            navigate('/result')
-          }, 3000)
+            return false
+          }
+          
+          await tryUseCredit()
+          localStorage.removeItem('mbti_pending_order')
+          localStorage.setItem('mbti_paid', 'true')
+          window.dispatchEvent(new Event('mbti-login-change'))
+          navigate('/result')
         }
       } catch { /* ignore */ }
     }, 2000)
