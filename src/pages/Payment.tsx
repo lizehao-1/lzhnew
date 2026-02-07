@@ -38,7 +38,50 @@ export default function Payment() {
     const savedPin = localStorage.getItem('mbti_pin')
     if (savedPhone) setPhone(savedPhone)
     if (savedPin) setPin(savedPin)
-  }, [navigate])
+    
+    // 如果已有完整登录信息，自动提交（延迟执行确保状态已更新）
+    if (savedPhone && savedPin && /^1[3-9]\d{9}$/.test(savedPhone) && /^\d{4}$/.test(savedPin)) {
+      // 使用 setTimeout 确保组件完全挂载后再执行
+      const timer = setTimeout(() => {
+        autoSubmit(savedResult, savedPhone, savedPin)
+      }, 100)
+      return () => clearTimeout(timer)
+    }
+  }, []) // 只在组件挂载时执行一次
+
+  // 自动提交登录
+  const autoSubmit = async (result: string, phone: string, pin: string) => {
+    setStep('checking_credits')
+    try {
+      const questionSet = localStorage.getItem('mbti_question_set')
+      const saveResp = await fetch('/api/user/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, pin, result, questionSet })
+      })
+      const saveData = await saveResp.json()
+      
+      if (saveData.error === 'PIN码错误') {
+        // PIN码错误，让用户重新输入
+        setStep('phone')
+        setPhoneError('密码错误，请重新输入')
+        return
+      }
+      
+      if (saveData.success) {
+        setRecordTimestamp(saveData.timestamp)
+        if (saveData.credits > 0) {
+          await useCredit(saveData.timestamp, phone)
+        } else {
+          setStep('intro')
+        }
+      } else {
+        setStep('intro')
+      }
+    } catch {
+      setStep('intro')
+    }
+  }
 
   const benefits = useMemo(() => [
     '四维度偏好分析图表',
@@ -109,12 +152,13 @@ export default function Payment() {
     }
   }
 
-  const useCredit = async (timestamp: number) => {
+  const useCredit = async (timestamp: number, phoneOverride?: string) => {
+    const usePhone = phoneOverride || phone
     try {
       const resp = await fetch('/api/user/use-credit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, timestamp })
+        body: JSON.stringify({ phone: usePhone, timestamp })
       })
       const data = await resp.json()
       
