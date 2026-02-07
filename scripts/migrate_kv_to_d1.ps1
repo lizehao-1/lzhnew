@@ -1,25 +1,28 @@
 ﻿param(
   [string]$NamespaceId = "0272b12877264d808bec5fbee5f4db93",
-  [string]$DbName = "mbti"
+  [string]$DbName = "mbti",
+  [string[]]$Phones = @()
 )
 
-$keysJson = npx wrangler kv key list --namespace-id $NamespaceId | Out-String
-if (-not $keysJson) { Write-Error "No keys returned"; exit 1 }
-if ($keysJson -notmatch '^\s*\[') { Write-Error $keysJson; exit 1 }
-$keys = $keysJson | ConvertFrom-Json
+if ($Phones.Count -gt 0) {
+  $phoneKeys = $Phones
+} else {
+  $keysJson = npx wrangler kv key list --namespace-id $NamespaceId --remote | Out-String
+  if (-not $keysJson) { Write-Error "No keys returned"; exit 1 }
+  if ($keysJson -notmatch '^\s*\[') { Write-Error $keysJson; exit 1 }
+  $keys = $keysJson | ConvertFrom-Json
+  $phoneKeys = $keys | Where-Object { $_.name -match '^1[3-9]\d{9}$' } | ForEach-Object { $_.name }
+}
 
-$phoneKeys = $keys | Where-Object { $_.name -match '^1[3-9]\d{9}$' }
-
-if (-not $phoneKeys) { Write-Host "No phone keys found"; exit 0 }
+if (-not $phoneKeys -or $phoneKeys.Count -eq 0) { Write-Host "No phone keys found"; exit 0 }
 
 function SqlEscape([string]$s) {
   if ($null -eq $s) { return "" }
   return $s.Replace("'","''")
 }
 
-foreach ($k in $phoneKeys) {
-  $phone = $k.name
-  $raw = npx wrangler kv key get --namespace-id $NamespaceId --key $phone | Out-String
+foreach ($phone in $phoneKeys) {
+  $raw = npx wrangler kv key get $phone --namespace-id $NamespaceId --remote --text | Out-String
   if (-not $raw) { continue }
   try { $obj = $raw | ConvertFrom-Json } catch { continue }
 
@@ -45,7 +48,7 @@ foreach ($k in $phoneKeys) {
     $sql += "INSERT OR IGNORE INTO records (phone, result, question_set, ts, viewed) VALUES ('$phone', '$result', $qset, $ts, $viewed);"
   }
 
-  $sqlText = $sql -join "\n"
+  $sqlText = $sql -join "`n"
   npx wrangler d1 execute $DbName --command $sqlText --remote | Out-Null
   Write-Host "Migrated $phone (credits=$credits, records=$($records.Count))"
 }
