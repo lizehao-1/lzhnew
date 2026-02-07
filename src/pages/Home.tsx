@@ -1,6 +1,18 @@
-﻿import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { useI18n } from '../i18n'
+
+type TestCard = {
+  key: string
+  title: string
+  desc: string
+  tag: string
+  meta: string
+  status: 'live' | 'soon'
+  cta: string
+  image: string
+  action: () => void
+}
 
 export default function Home() {
   const navigate = useNavigate()
@@ -18,32 +30,99 @@ export default function Home() {
     }
   }, [location.state])
 
-  const features = [
-    { icon: '🧭', title: t('feature_1_title'), desc: t('feature_1_desc') },
-    { icon: '🧠', title: t('feature_2_title'), desc: t('feature_2_desc') },
-    { icon: '🎯', title: t('feature_3_title'), desc: t('feature_3_desc') },
+  const showToast = (message: string) => {
+    setToast(message)
+    const timer = setTimeout(() => setToast(null), 2400)
+    return () => clearTimeout(timer)
+  }
+
+  const tests: TestCard[] = [
+    {
+      key: 'mbti',
+      title: t('home_test_mbti_title'),
+      desc: t('home_test_mbti_desc'),
+      tag: t('home_test_mbti_tag'),
+      meta: t('home_test_mbti_meta'),
+      status: 'live',
+      cta: t('home_test_mbti_cta'),
+      image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=1600&q=80',
+      action: () => navigate('/test'),
+    },
+    {
+      key: 'big5',
+      title: t('home_test_big5_title'),
+      desc: t('home_test_big5_desc'),
+      tag: t('home_test_big5_tag'),
+      meta: t('home_test_big5_meta'),
+      status: 'soon',
+      cta: t('home_test_soon_cta'),
+      image: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=1600&q=80',
+      action: () => showToast(t('home_coming_soon')),
+    },
+    {
+      key: 'riasec',
+      title: t('home_test_riasec_title'),
+      desc: t('home_test_riasec_desc'),
+      tag: t('home_test_riasec_tag'),
+      meta: t('home_test_riasec_meta'),
+      status: 'soon',
+      cta: t('home_test_soon_cta'),
+      image: 'https://images.pexels.com/photos/1181406/pexels-photo-1181406.jpeg?auto=compress&cs=tinysrgb&w=1600',
+      action: () => showToast(t('home_coming_soon')),
+    },
+    {
+      key: 'sjt',
+      title: t('home_test_sjt_title'),
+      desc: t('home_test_sjt_desc'),
+      tag: t('home_test_sjt_tag'),
+      meta: t('home_test_sjt_meta'),
+      status: 'soon',
+      cta: t('home_test_soon_cta'),
+      image: 'https://images.pexels.com/photos/3184613/pexels-photo-3184613.jpeg?auto=compress&cs=tinysrgb&w=1600',
+      action: () => showToast(t('home_coming_soon')),
+    },
+    {
+      key: 'visual',
+      title: t('home_test_visual_title'),
+      desc: t('home_test_visual_desc'),
+      tag: t('home_test_visual_tag'),
+      meta: t('home_test_visual_meta'),
+      status: 'soon',
+      cta: t('home_test_soon_cta'),
+      image: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1600&q=80',
+      action: () => showToast(t('home_coming_soon')),
+    },
   ]
 
-  const dimensions = [
-    { left: t('dim_e'), right: t('dim_i'), desc: t('dim_ei_desc') },
-    { left: t('dim_s'), right: t('dim_n'), desc: t('dim_sn_desc') },
-    { left: t('dim_t'), right: t('dim_f'), desc: t('dim_tf_desc') },
-    { left: t('dim_j'), right: t('dim_p'), desc: t('dim_jp_desc') },
+  const highlights = [
+    { title: t('home_highlight_1_title'), desc: t('home_highlight_1_desc') },
+    { title: t('home_highlight_2_title'), desc: t('home_highlight_2_desc') },
+    { title: t('home_highlight_3_title'), desc: t('home_highlight_3_desc') },
   ]
 
-  const usecases = [t('usecase_1'), t('usecase_2'), t('usecase_3'), t('usecase_4')]
+  const steps = [
+    { title: t('home_step_1_title'), desc: t('home_step_1_desc') },
+    { title: t('home_step_2_title'), desc: t('home_step_2_desc') },
+    { title: t('home_step_3_title'), desc: t('home_step_3_desc') },
+  ]
+
+  const previewMetrics = [
+    { label: t('home_preview_metric_1'), percent: 30 },
+    { label: t('home_preview_metric_2'), percent: 55 },
+    { label: t('home_preview_metric_3'), percent: 72 },
+  ]
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:py-16 page-enter">
       {toast && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 animate-fade-in">
-          <div className="bg-emerald-500 text-white px-6 py-3 rounded-xl shadow-lg text-sm font-medium">
-            ✓ {toast}
+          <div className="bg-slate-900 text-white px-6 py-3 rounded-xl shadow-lg text-sm font-medium">
+            {toast}
           </div>
         </div>
       )}
 
-      <div className="grid items-center gap-8 lg:grid-cols-2 lg:gap-12">
+      <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-14">
         <div>
           <div className="mb-4 flex flex-wrap gap-2">
             <span className="mbti-pill">{t('home_badge_1')}</span>
@@ -54,7 +133,7 @@ export default function Home() {
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-slate-950 font-display leading-[1.05]">
             {t('home_title')}
           </h1>
-          <p className="mt-2 text-xl text-slate-600 sm:text-2xl">
+          <p className="mt-3 text-xl text-slate-600 sm:text-2xl">
             {t('home_subtitle')}
           </p>
 
@@ -81,48 +160,44 @@ export default function Home() {
             <div className="flex items-start justify-between gap-4 mb-5">
               <div>
                 <div className="text-xs font-semibold text-slate-500">{t('home_preview_label')}</div>
-                <div className="mt-2 flex items-end gap-3">
-                  <span className="text-4xl font-black tracking-tight text-slate-950">INTJ</span>
-                  <div className="pb-1">
-                    <div className="text-base font-bold text-slate-900">{t('home_preview_title')}</div>
-                    <div className="text-sm text-slate-500">{t('home_preview_subtitle')}</div>
-                  </div>
+                <div className="mt-2 text-3xl font-black tracking-tight text-slate-950">
+                  {t('home_preview_title')}
                 </div>
+                <div className="text-sm text-slate-500">{t('home_preview_subtitle')}</div>
               </div>
               <span className="rounded-xl bg-slate-950 px-3 py-1.5 text-xs font-semibold text-white">{t('home_preview_sample')}</span>
             </div>
 
             <div className="space-y-3 mb-5">
-              {[
-                { label: 'E/I', percent: 23, color: 'bg-sky-500' },
-                { label: 'S/N', percent: 35, color: 'bg-emerald-500' },
-                { label: 'T/F', percent: 78, color: 'bg-orange-500' },
-                { label: 'J/P', percent: 65, color: 'bg-purple-500' },
-              ].map((d) => (
-                <div key={d.label} className="flex items-center gap-3">
-                  <span className="w-8 text-xs font-semibold text-slate-500">{d.label}</span>
+              {previewMetrics.map((metric) => (
+                <div key={metric.label} className="flex items-center gap-3">
+                  <span className="w-10 text-xs font-semibold text-slate-500">{metric.label}</span>
                   <div className="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden">
-                    <div className={`h-full rounded-full ${d.color}`} style={{ width: `${d.percent}%` }} />
+                    <div className="h-full rounded-full bg-slate-900" style={{ width: `${metric.percent}%` }} />
                   </div>
-                  <span className="w-8 text-xs text-slate-400">{d.percent}%</span>
+                  <span className="w-8 text-xs text-slate-400">{metric.percent}%</span>
                 </div>
               ))}
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-3">
-                <div className="text-xs font-semibold text-emerald-600 mb-2">{t('home_strengths')}</div>
+              <div className="rounded-xl border border-slate-200/60 bg-slate-50/60 p-3">
+                <div className="text-xs font-semibold text-slate-700 mb-2">{t('home_preview_focus')}</div>
                 <div className="flex flex-wrap gap-1">
-                  {['战略思维', '独立自主', '追求卓越'].map((s) => (
-                    <span key={s} className="text-xs text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">{s}</span>
+                  {t('home_preview_focus_items').split('、').map((s) => (
+                    <span key={s} className="text-xs text-slate-700 bg-white/70 px-2 py-0.5 rounded-full border border-slate-200/70">
+                      {s}
+                    </span>
                   ))}
                 </div>
               </div>
-              <div className="rounded-xl border border-amber-100 bg-amber-50/50 p-3">
-                <div className="text-xs font-semibold text-amber-600 mb-2">{t('home_growth')}</div>
+              <div className="rounded-xl border border-slate-200/60 bg-slate-50/60 p-3">
+                <div className="text-xs font-semibold text-slate-700 mb-2">{t('home_preview_action')}</div>
                 <div className="flex flex-wrap gap-1">
-                  {['情感表达', '灵活变通'].map((w) => (
-                    <span key={w} className="text-xs text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">{w}</span>
+                  {t('home_preview_action_items').split('、').map((s) => (
+                    <span key={s} className="text-xs text-slate-700 bg-white/70 px-2 py-0.5 rounded-full border border-slate-200/70">
+                      {s}
+                    </span>
                   ))}
                 </div>
               </div>
@@ -131,44 +206,64 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="mt-12 grid gap-4 md:grid-cols-3">
-        {features.map((f) => (
+      <section className="mt-12">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-950 font-display">
+              {t('home_tests_title')}
+            </h2>
+            <p className="text-sm text-slate-600 mt-1">{t('home_tests_sub')}</p>
+          </div>
+          <span className="text-xs text-slate-500">{t('home_tests_hint')}</span>
+        </div>
+
+        <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          {tests.map((test) => (
+            <button
+              key={test.key}
+              className="test-card text-left"
+              onClick={test.action}
+            >
+              <div className="test-card__media" style={{ backgroundImage: `url(${test.image})` }} />
+              <div className="test-card__overlay" />
+              <div className="test-card__content">
+                <div className="flex items-center gap-2 text-xs text-slate-100">
+                  <span className="test-pill">{test.tag}</span>
+                  <span className={`test-status ${test.status === 'live' ? 'test-status--live' : ''}`}>
+                    {test.status === 'live' ? t('home_test_status_live') : t('home_test_status_soon')}
+                  </span>
+                </div>
+                <div className="mt-3 text-lg font-bold text-white">{test.title}</div>
+                <p className="mt-2 text-sm text-slate-200">{test.desc}</p>
+                <div className="mt-4 flex items-center justify-between text-xs text-slate-200">
+                  <span>{test.meta}</span>
+                  <span className="font-semibold">{test.cta}</span>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="mt-12 grid gap-4 md:grid-cols-3">
+        {highlights.map((f) => (
           <div key={f.title} className="mbti-card p-5">
-            <div className="text-2xl mb-2">{f.icon}</div>
             <div className="text-sm font-bold text-slate-900 mb-1">{f.title}</div>
             <div className="text-sm leading-relaxed text-slate-600">{f.desc}</div>
           </div>
         ))}
-      </div>
-
-      <section className="mt-12">
-        <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-950 mb-4 font-display">{t('home_section_what')}</h2>
-        <div className="mbti-card p-6">
-          <p className="text-sm text-slate-600 leading-relaxed mb-5">
-            {t('home_intro')}
-          </p>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {dimensions.map((d) => (
-              <div key={d.left} className="rounded-xl border border-slate-100 bg-slate-50/50 p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-bold text-sky-600">{d.left}</span>
-                  <span className="text-slate-300">vs</span>
-                  <span className="text-sm font-bold text-orange-500">{d.right}</span>
-                </div>
-                <p className="text-xs text-slate-500">{d.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
       </section>
 
       <section className="mt-12">
-        <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-950 mb-4 font-display">{t('home_section_use')}</h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {usecases.map((text) => (
-            <div key={text} className="mbti-card p-4 flex items-start gap-3">
-              <span className="text-xl">✨</span>
-              <span className="text-sm text-slate-600">{text}</span>
+        <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-950 mb-4 font-display">
+          {t('home_steps_title')}
+        </h2>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {steps.map((step, index) => (
+            <div key={step.title} className="mbti-card p-5">
+              <div className="text-xs text-slate-500 mb-2">{t('home_steps_label', { n: index + 1 })}</div>
+              <div className="text-sm font-bold text-slate-900 mb-1">{step.title}</div>
+              <div className="text-sm text-slate-600">{step.desc}</div>
             </div>
           ))}
         </div>
@@ -177,7 +272,9 @@ export default function Home() {
       <section className="mt-12 mbti-card p-6 sm:p-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <div className="text-2xl sm:text-3xl font-black tracking-tight text-slate-950 font-display">{t('home_section_cta')}</div>
+            <div className="text-2xl sm:text-3xl font-black tracking-tight text-slate-950 font-display">
+              {t('home_section_cta')}
+            </div>
             <div className="mt-1 text-sm text-slate-600">{t('home_section_cta_sub')}</div>
           </div>
           <button className="mbti-button-primary whitespace-nowrap" onClick={() => navigate('/test')}>

@@ -8,8 +8,12 @@ cd mbti-v2
 # 1. 构建
 npm run build
 
-# 2. 部署到 Cloudflare Pages（自动部署到 lizehao.asia）
-npx wrangler pages deploy dist --project-name=mbti-test --commit-dirty=true
+# 2. 部署到 Cloudflare Pages
+# 主站（lizehao.asia）
+npx wrangler pages deploy dist --project-name=lzhnew --commit-dirty=true
+
+# MBTI 站（mbti.lizehao.asia）
+# npx wrangler pages deploy dist --project-name=mbti-test --commit-dirty=true
 
 # 3. 提交到 GitHub
 git add -A
@@ -17,13 +21,13 @@ git commit -m "描述"
 git push
 ```
 
-**注意**：部署后会自动同步到自定义域名 `lizehao.asia`，无需额外配置。
+**注意**：当前 `lizehao.asia` 绑定在项目 `lzhnew`，MBTI 站点绑定在 `mbti-test`（子域名 `mbti.lizehao.asia`）。
 
 ## 环境配置
 
 ### Cloudflare Pages 环境变量
 
-在 Cloudflare Dashboard → Pages → mbti-test → Settings → Environment variables 中配置：
+在 Cloudflare Dashboard → Pages → 对应项目 → Settings → Environment variables 中配置：
 
 | 变量名 | 说明 |
 |--------|------|
@@ -51,9 +55,10 @@ KV 命名空间 ID: `0272b12877264d808bec5fbee5f4db93`
 
 ### ID / 绑定
 
-- Pages 项目名：`mbti-test`
+- Pages 项目名：`lzhnew`（主站）、`mbti-test`（MBTI）
 - 主域名：`lizehao.asia`
-- Pages 域名：`mbti-test-a06.pages.dev`
+- MBTI 子域名：`mbti.lizehao.asia`
+- Pages 域名：`lzhnew.pages.dev`、`mbti-test-a06.pages.dev`
 - KV 命名空间 ID：`0272b12877264d808bec5fbee5f4db93`
 - KV 绑定名：`MBTI_USERS`
 - D1 数据库名：`mbti`
@@ -73,13 +78,13 @@ KV 命名空间 ID: `0272b12877264d808bec5fbee5f4db93`
 
 ```powershell
 # adminKey 需要与 Cloudflare 环境变量中配置的 ADMIN_KEY 一致
-Invoke-RestMethod -Uri "https://mbti-test-a06.pages.dev/api/admin/add-credits" -Method POST -ContentType "application/json" -Body '{"phone":"手机号","credits":积分数量,"adminKey":"你的管理员密钥"}'
+Invoke-RestMethod -Uri "https://mbti.lizehao.asia/api/admin/add-credits" -Method POST -ContentType "application/json" -Body '{"phone":"手机号","credits":积分数量,"adminKey":"你的管理员密钥"}'
 ```
 
 ### 查询用户数据
 
 ```powershell
-Invoke-RestMethod -Uri "https://mbti-test-a06.pages.dev/api/user/query?phone=手机号&pin=密码" -Method GET
+Invoke-RestMethod -Uri "https://mbti.lizehao.asia/api/user/query?phone=手机号&pin=密码" -Method GET
 ```
 
 ## 项目结构
@@ -148,7 +153,6 @@ GitHub 仓库: `lizehao-1/mbti-v2`
 
 ## 域名
 
-- 主域名: `lizehao.asia`（Cloudflare 自动同步）
-- Cloudflare Pages: `mbti-test-a06.pages.dev`
-
-部署到 Cloudflare Pages 后会自动同步到 lizehao.asia，无需手动配置。
+- 主域名: `lizehao.asia` → Pages 项目 `lzhnew`
+- MBTI 子域名: `mbti.lizehao.asia` → Pages 项目 `mbti-test`
+- Pages 域名: `lzhnew.pages.dev`、`mbti-test-a06.pages.dev`

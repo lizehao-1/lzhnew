@@ -95,6 +95,39 @@
     @apply border-b border-slate-200/60 bg-white/55 backdrop-blur-xl;
     box-shadow: 0 8px 30px rgba(2, 6, 23, 0.06);
   }
+
+  .test-card {
+    @apply relative overflow-hidden rounded-3xl border border-white/10 bg-slate-900/80 text-left;
+    box-shadow: 0 18px 40px rgba(2, 6, 23, 0.22);
+  }
+
+  .test-card__media {
+    @apply absolute inset-0;
+    background-size: cover;
+    background-position: center;
+    filter: saturate(1.05) contrast(1.05);
+  }
+
+  .test-card__overlay {
+    @apply absolute inset-0;
+    background: linear-gradient(180deg, rgba(2, 6, 23, 0.2) 0%, rgba(2, 6, 23, 0.75) 60%, rgba(2, 6, 23, 0.9) 100%);
+  }
+
+  .test-card__content {
+    @apply relative z-10 p-6 min-h-[230px] flex flex-col justify-end;
+  }
+
+  .test-pill {
+    @apply inline-flex items-center rounded-full border border-white/20 bg-white/10 px-2.5 py-1 text-[11px] font-semibold;
+  }
+
+  .test-status {
+    @apply rounded-full border border-white/20 bg-white/10 px-2.5 py-1 text-[11px] font-semibold;
+  }
+
+  .test-status--live {
+    @apply bg-emerald-400/20 border-emerald-200/40 text-emerald-100;
+  }
 }
 
 button, a {

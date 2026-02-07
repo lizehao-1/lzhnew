@@ -10,7 +10,7 @@ function LogoMark({ title, subtitle }: { title: string; subtitle: string }) {
         <div className="absolute inset-0 bg-gradient-to-br from-white via-slate-50 to-slate-100" />
         <div className="absolute inset-0 ring-1 ring-white/70" />
         <div className="relative h-full w-full grid place-items-center">
-          <span className="text-[11px] sm:text-xs font-black tracking-tight text-slate-900">MB</span>
+          <span className="text-[11px] sm:text-xs font-black tracking-tight text-slate-900">LZ</span>
         </div>
       </div>
       <div className="leading-tight hidden sm:block">
