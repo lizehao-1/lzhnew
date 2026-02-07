@@ -134,6 +134,12 @@ export default function UserMenu() {
               📋 历史记录
             </button>
             <button
+              onClick={() => { navigate('/recharge'); setShowMenu(false) }}
+              className="w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+            >
+              💰 充值积分
+            </button>
+            <button
               onClick={refreshCredits}
               className="w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
             >
