@@ -1,4 +1,4 @@
-import { useNavigate, useLocation } from 'react-router-dom'
+ï»¿import { useNavigate, useLocation } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { useI18n } from '../i18n'
 
@@ -19,9 +19,9 @@ export default function Home() {
   }, [location.state])
 
   const features = [
-    { icon: '??', title: t('feature_1_title'), desc: t('feature_1_desc') },
-    { icon: '??', title: t('feature_2_title'), desc: t('feature_2_desc') },
-    { icon: '??', title: t('feature_3_title'), desc: t('feature_3_desc') },
+    { icon: 'ðŸ§­', title: t('feature_1_title'), desc: t('feature_1_desc') },
+    { icon: 'ðŸ§ ', title: t('feature_2_title'), desc: t('feature_2_desc') },
+    { icon: 'ðŸŽ¯', title: t('feature_3_title'), desc: t('feature_3_desc') },
   ]
 
   const dimensions = [
@@ -38,7 +38,7 @@ export default function Home() {
       {toast && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 animate-fade-in">
           <div className="bg-emerald-500 text-white px-6 py-3 rounded-xl shadow-lg text-sm font-medium">
-            ? {toast}
+            âœ“ {toast}
           </div>
         </div>
       )}
@@ -113,7 +113,7 @@ export default function Home() {
               <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-3">
                 <div className="text-xs font-semibold text-emerald-600 mb-2">{t('home_strengths')}</div>
                 <div className="flex flex-wrap gap-1">
-                  {['Õ½ÂÔË¼Î¬', '¶ÀÁ¢×ÔÖ÷', '×·Çó×¿Ô½'].map((s) => (
+                  {['æˆ˜ç•¥æ€ç»´', 'ç‹¬ç«‹è‡ªä¸»', 'è¿½æ±‚å“è¶Š'].map((s) => (
                     <span key={s} className="text-xs text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">{s}</span>
                   ))}
                 </div>
@@ -121,7 +121,7 @@ export default function Home() {
               <div className="rounded-xl border border-amber-100 bg-amber-50/50 p-3">
                 <div className="text-xs font-semibold text-amber-600 mb-2">{t('home_growth')}</div>
                 <div className="flex flex-wrap gap-1">
-                  {['Çé¸Ð±í´ï', 'Áé»î±äÍ¨'].map((w) => (
+                  {['æƒ…æ„Ÿè¡¨è¾¾', 'çµæ´»å˜é€š'].map((w) => (
                     <span key={w} className="text-xs text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">{w}</span>
                   ))}
                 </div>
@@ -167,7 +167,7 @@ export default function Home() {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {usecases.map((text) => (
             <div key={text} className="mbti-card p-4 flex items-start gap-3">
-              <span className="text-xl">?</span>
+              <span className="text-xl">âœ¨</span>
               <span className="text-sm text-slate-600">{text}</span>
             </div>
           ))}
@@ -181,7 +181,7 @@ export default function Home() {
             <div className="mt-1 text-sm text-slate-600">{t('home_section_cta_sub')}</div>
           </div>
           <button className="mbti-button-primary whitespace-nowrap" onClick={() => navigate('/test')}>
-            {t('home_cta_primary')} ¡ú
+            {t('home_cta_primary')} â†’
           </button>
         </div>
       </section>

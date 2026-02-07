@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+﻿import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Question } from '../data/questions'
 import { QuestionSetId, questionSets, loadQuestions } from '../data/question-sets'
@@ -55,14 +55,14 @@ function SetSelector({ onSelect }: { onSelect: (id: QuestionSetId) => void }) {
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-lg font-black text-slate-950">{set.name}</span>
-                  <span className="text-xs text-slate-400">{set.count} {t('test_question_unit')} �� {set.time}</span>
+                  <span className="text-xs text-slate-400">{set.count} {t('test_question_unit')} · {set.time}</span>
                   {set.id === '48' && (
                     <span className="text-xs bg-sky-100 text-sky-700 px-2 py-0.5 rounded-full">{t('test_recommended')}</span>
                   )}
                 </div>
                 <p className="mt-1 text-sm text-slate-500">{set.desc}</p>
               </div>
-              <span className="text-slate-300 group-hover:text-slate-500 transition-colors">��</span>
+              <span className="text-slate-300 group-hover:text-slate-500 transition-colors">→</span>
             </div>
           </button>
         ))}
@@ -157,7 +157,7 @@ export default function Test() {
     <div className="mx-auto max-w-2xl px-4 pb-10 pt-4 page-enter">
       {isFinishing && (
         <div className="mb-4 rounded-xl border border-slate-200 bg-white/80 px-4 py-3 text-sm text-slate-600 shadow-sm">
-          正在跳转到支付页面...
+          {t('test_finishing')}
         </div>
       )}
       <div className="mb-5 rounded-xl border border-slate-200 bg-white/70 backdrop-blur px-4 py-3">

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+锘縤mport { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useI18n } from '../i18n'
 
@@ -41,11 +41,11 @@ export default function UserMenu() {
 
   const handleLogin = async () => {
     if (!inputPhone || !/^1[3-9]\d{9}$/.test(inputPhone)) {
-      setError('请输入正确的手机号')
+      setError(t('login_invalid_phone'))
       return
     }
     if (!inputPin || !/^\d{4}$/.test(inputPin)) {
-      setError('请输入 4 位数字密码')
+      setError(t('login_invalid_pin'))
       return
     }
     setError('')
@@ -56,13 +56,13 @@ export default function UserMenu() {
       const data = await resp.json()
 
       if (resp.status === 401 || data.needPin) {
-        setError('密码错误')
+        setError(t('login_wrong_pin'))
         setLoading(false)
         return
       }
 
       if (!resp.ok) {
-        setError(data.error || '登录失败，请重试')
+        setError(data.error || t('login_failed'))
         setLoading(false)
         return
       }
@@ -76,10 +76,10 @@ export default function UserMenu() {
         setInputPin('')
         window.dispatchEvent(new Event('mbti-login-change'))
       } else {
-        setError('账号不存在，请先完成测试')
+        setError(t('login_not_found'))
       }
     } catch {
-      setError('登录失败，请重试')
+      setError(t('login_failed'))
     } finally {
       setLoading(false)
     }
@@ -165,10 +165,10 @@ export default function UserMenu() {
               disabled={loading}
               className="w-full mbti-button-primary text-sm disabled:opacity-50"
             >
-              {loading ? '登录中...' : t('nav_login')}
+              {loading ? t('login_loading') : t('nav_login')}
             </button>
             <p className="text-xs text-slate-400 text-center">
-              完成测试后自动创建账号
+              {t('login_tip')}
             </p>
           </div>
         </div>

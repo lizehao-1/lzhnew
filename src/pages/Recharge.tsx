@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+ï»¿import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import QRCode from 'qrcode'
 import { useI18n } from '../i18n'
@@ -211,7 +211,7 @@ export default function Recharge() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-xl font-black text-slate-950">£¤{pkg.price}</div>
+                      <div className="text-xl font-black text-slate-950">ï¿¥{pkg.price}</div>
                       {pkg.popular && (
                         <span className="text-xs bg-sky-100 text-sky-700 px-2 py-0.5 rounded-full">{t('recommended')}</span>
                       )}
@@ -226,7 +226,7 @@ export default function Recharge() {
               onClick={createOrder}
               disabled={loading}
             >
-              {loading ? t('creating_order') : `${t('recharge_pay')} £¤${selectedPkg.price}`}
+              {loading ? t('creating_order') : `${t('recharge_pay')} ï¿¥${selectedPkg.price}`}
             </button>
 
             {error && <p className="mt-3 text-xs text-red-500 text-center">{error}</p>}
@@ -239,7 +239,7 @@ export default function Recharge() {
               <div className="text-center">
                 <p className="text-sm text-slate-600 mb-3">{t('scan_pay')}</p>
                 <img src={qrDataUrl} alt="QR" className="mx-auto rounded-xl" />
-                <p className="mt-3 text-lg font-bold text-slate-950">£¤{selectedPkg.price}</p>
+                <p className="mt-3 text-lg font-bold text-slate-950">ï¿¥{selectedPkg.price}</p>
                 <p className="text-xs text-slate-500 mt-1">{t('recharge_view_times', { credits: selectedPkg.credits })}</p>
               </div>
             ) : (
