@@ -82,12 +82,13 @@ export async function onRequest(context) {
  */
 async function compensateCreditsIfNeeded(env, outTradeNo, paramValue) {
   try {
-    // 检查订单是否已处理
-    const orderKey = `ORDER_${outTradeNo}`
-    const existingOrder = await env.MBTI_USERS?.get(orderKey)
+    const db = env.MBTI_DB
+    const existingOrder = await db.prepare('SELECT processed FROM orders WHERE out_trade_no = ?')
+      .bind(outTradeNo)
+      .first()
     if (existingOrder) {
       console.log('Order already processed:', outTradeNo)
-      return // 已处理，无需补偿
+      return
     }
     
     // 从订单号提取手机号
@@ -105,38 +106,27 @@ async function compensateCreditsIfNeeded(env, outTradeNo, paramValue) {
       if (rechargeCredits > 0) creditsToAdd = rechargeCredits
     }
     
-    // 增加积分
-    const data = await env.MBTI_USERS?.get(phone)
-    if (!data) {
-      // 用户不存在，创建
-      const userData = { phone, credits: creditsToAdd, records: [] }
-      await env.MBTI_USERS?.put(phone, JSON.stringify(userData))
-    } else {
-      const userData = JSON.parse(data)
-      if (typeof userData.credits !== 'number') userData.credits = 0
-      userData.credits += creditsToAdd
-      
-      // 如果是普通支付，标记最新记录为已查看
-      if (!isRecharge && userData.records?.length > 0) {
-        const latestRecord = userData.records[userData.records.length - 1]
-        if (latestRecord && !latestRecord.viewed) {
-          userData.credits -= 1
-          latestRecord.viewed = true
-        }
+    const now = Date.now()
+    await db.prepare(
+      'INSERT INTO orders (out_trade_no, phone, credits_delta, is_recharge, processed, created_at) VALUES (?, ?, ?, ?, 1, ?)'
+    ).bind(outTradeNo, phone, creditsToAdd, isRecharge ? 1 : 0, now).run()
+
+    await db.prepare(
+      'INSERT INTO users (phone, pin, credits, created_at, updated_at) VALUES (?, ?, ?, ?, ?) ' +
+      'ON CONFLICT(phone) DO UPDATE SET credits = credits + excluded.credits, updated_at = excluded.updated_at'
+    ).bind(phone, '', creditsToAdd, now, now).run()
+
+    if (!isRecharge) {
+      const latest = await db.prepare(
+        'SELECT id FROM records WHERE phone = ? AND viewed = 0 ORDER BY ts DESC LIMIT 1'
+      ).bind(phone).first()
+      if (latest?.id) {
+        await db.batch([
+          db.prepare('UPDATE records SET viewed = 1 WHERE id = ?').bind(latest.id),
+          db.prepare('UPDATE users SET credits = credits - 1, updated_at = ? WHERE phone = ? AND credits > 0').bind(now, phone)
+        ])
       }
-      
-      await env.MBTI_USERS?.put(phone, JSON.stringify(userData))
     }
-    
-    // 标记订单已处理
-    await env.MBTI_USERS?.put(orderKey, JSON.stringify({
-      processed: true,
-      phone,
-      credits: creditsToAdd,
-      isRecharge,
-      compensated: true, // 标记为补偿的
-      time: Date.now()
-    }))
     
     console.log('Compensated credits for:', phone, 'amount:', creditsToAdd)
   } catch (err) {

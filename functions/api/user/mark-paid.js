@@ -15,27 +15,23 @@ export async function onRequestPost(context) {
       return Response.json({ error: '缺少手机号' }, { status: 400 })
     }
     
-    // 从 KV 获取数据
-    const data = await env.MBTI_USERS?.get(phone)
-    
-    if (!data) {
-      return Response.json({ error: '用户不存在' }, { status: 404 })
+    const db = env.MBTI_DB
+    const now = Date.now()
+
+    const existing = await db.prepare('SELECT credits FROM users WHERE phone = ?').bind(phone).first()
+    if (!existing) {
+      await db.prepare('INSERT INTO users (phone, pin, credits, created_at, updated_at) VALUES (?, ?, 3, ?, ?)')
+        .bind(phone, '', now, now)
+        .run()
+      return Response.json({ success: true, credits: 3 })
     }
-    
-    const userData = JSON.parse(data)
-    
-    // 确保有 credits 字段
-    if (typeof userData.credits !== 'number') {
-      userData.credits = 0
-    }
-    
-    // 增加3次查看积分
-    userData.credits += 3
-    
-    // 保存回 KV
-    await env.MBTI_USERS?.put(phone, JSON.stringify(userData))
-    
-    return Response.json({ success: true, credits: userData.credits })
+
+    await db.prepare('UPDATE users SET credits = credits + 3, updated_at = ? WHERE phone = ?')
+      .bind(now, phone)
+      .run()
+
+    const updated = await db.prepare('SELECT credits FROM users WHERE phone = ?').bind(phone).first()
+    return Response.json({ success: true, credits: updated?.credits ?? 0 })
   } catch (err) {
     return Response.json({ error: err.message }, { status: 500 })
   }

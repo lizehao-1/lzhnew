@@ -15,49 +15,50 @@ export async function onRequestPost(context) {
       return noCacheResponse({ error: '缺少必要参数' }, 400)
     }
     
-    // 从 KV 获取数据
-    const data = await env.MBTI_USERS?.get(phone)
-    
-    if (!data) {
+    const db = env.MBTI_DB
+    const user = await db.prepare('SELECT credits FROM users WHERE phone = ?').bind(phone).first()
+
+    if (!user) {
       return noCacheResponse({ error: '用户不存在' }, 404)
     }
-    
-    const userData = JSON.parse(data)
-    
-    // 找到对应记录
-    const record = userData.records.find(r => r.timestamp === timestamp)
+
+    const record = await db.prepare('SELECT viewed FROM records WHERE phone = ? AND ts = ?')
+      .bind(phone, timestamp)
+      .first()
+
     if (!record) {
       return noCacheResponse({ error: '记录不存在' }, 404)
     }
-    
-    // 如果已经查看过，不再消耗积分
+
     if (record.viewed) {
-      return noCacheResponse({ 
-        success: true, 
-        credits: userData.credits,
-        alreadyViewed: true 
+      return noCacheResponse({
+        success: true,
+        credits: user.credits,
+        alreadyViewed: true
       })
     }
-    
-    // 检查积分
-    if (userData.credits <= 0) {
-      return noCacheResponse({ 
-        error: '积分不足，请先支付', 
+
+    const dec = await db.prepare('UPDATE users SET credits = credits - 1, updated_at = ? WHERE phone = ? AND credits > 0')
+      .bind(Date.now(), phone)
+      .run()
+
+    if (dec.meta?.changes === 0) {
+      return noCacheResponse({
+        error: '积分不足，请先支付',
         needPayment: true,
-        credits: 0 
+        credits: 0
       }, 402)
     }
-    
-    // 消耗积分
-    userData.credits -= 1
-    record.viewed = true
-    
-    // 保存回 KV
-    await env.MBTI_USERS?.put(phone, JSON.stringify(userData))
-    
-    return noCacheResponse({ 
-      success: true, 
-      credits: userData.credits,
+
+    await db.prepare('UPDATE records SET viewed = 1 WHERE phone = ? AND ts = ?')
+      .bind(phone, timestamp)
+      .run()
+
+    const updated = await db.prepare('SELECT credits FROM users WHERE phone = ?').bind(phone).first()
+
+    return noCacheResponse({
+      success: true,
+      credits: updated?.credits ?? 0,
       alreadyViewed: false
     })
   } catch (err) {

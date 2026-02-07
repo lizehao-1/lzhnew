@@ -49,8 +49,10 @@ export async function onRequest(context) {
     const outTradeNo = params.out_trade_no || ''
     
     // 幂等性检查：防止重复回调导致重复增加积分
-    const orderKey = `ORDER_${outTradeNo}`
-    const existingOrder = await env.MBTI_USERS?.get(orderKey)
+    const db = env.MBTI_DB
+    const existingOrder = await db.prepare('SELECT processed FROM orders WHERE out_trade_no = ?')
+      .bind(outTradeNo)
+      .first()
     if (existingOrder) {
       console.log('Order already processed, skipping:', outTradeNo)
       return new Response('success', { status: 200 })
@@ -72,18 +74,8 @@ export async function onRequest(context) {
           }
         }
         
-        // 增加用户积分，如果是普通支付则同时扣1积分并标记最新记录为已查看
-        await addCreditsAndUseOne(env, phone, creditsToAdd, !isRecharge)
+        await applyPayment(db, outTradeNo, phone, creditsToAdd, isRecharge)
         console.log('Credits added for phone:', phone, 'amount:', creditsToAdd, 'isRecharge:', isRecharge)
-        
-        // 标记订单已处理（防止重复回调）
-        await env.MBTI_USERS?.put(orderKey, JSON.stringify({ 
-          processed: true, 
-          phone,
-          credits: creditsToAdd,
-          isRecharge,
-          time: Date.now() 
-        }))
       }
     }
     
@@ -97,38 +89,31 @@ export async function onRequest(context) {
 }
 
 // 增加用户积分，如果是普通支付则同时扣1积分并标记最新记录为已查看
-async function addCreditsAndUseOne(env, phone, amount = 3, useOneCredit = false) {
+async function applyPayment(db, outTradeNo, phone, amount = 3, isRecharge = false) {
   try {
-    const data = await env.MBTI_USERS?.get(phone)
-    if (!data) {
-      // 用户不存在，创建新用户（充值场景，不应该发生在普通支付）
-      const userData = { phone, credits: amount, records: [] }
-      await env.MBTI_USERS?.put(phone, JSON.stringify(userData))
-      return
-    }
-    
-    const userData = JSON.parse(data)
-    if (typeof userData.credits !== 'number') {
-      userData.credits = 0
-    }
-    
-    // 增加积分
-    userData.credits += amount
-    
-    // 如果是普通支付（非充值），扣1积分并标记最新记录为已查看
-    if (useOneCredit && userData.records && userData.records.length > 0) {
-      // 找到最新的未查看记录
-      const latestRecord = userData.records[userData.records.length - 1]
-      if (latestRecord && !latestRecord.viewed) {
-        userData.credits -= 1  // 扣1积分
-        latestRecord.viewed = true  // 标记为已查看
-        console.log('Auto used 1 credit for latest record, remaining:', userData.credits)
+    const now = Date.now()
+    await db.prepare(
+      'INSERT INTO orders (out_trade_no, phone, credits_delta, is_recharge, processed, created_at) VALUES (?, ?, ?, ?, 1, ?)'
+    ).bind(outTradeNo, phone, amount, isRecharge ? 1 : 0, now).run()
+
+    await db.prepare(
+      'INSERT INTO users (phone, pin, credits, created_at, updated_at) VALUES (?, ?, ?, ?, ?) ' +
+      'ON CONFLICT(phone) DO UPDATE SET credits = credits + excluded.credits, updated_at = excluded.updated_at'
+    ).bind(phone, '', amount, now, now).run()
+
+    if (!isRecharge) {
+      const latest = await db.prepare(
+        'SELECT id FROM records WHERE phone = ? AND viewed = 0 ORDER BY ts DESC LIMIT 1'
+      ).bind(phone).first()
+      if (latest?.id) {
+        await db.batch([
+          db.prepare('UPDATE records SET viewed = 1 WHERE id = ?').bind(latest.id),
+          db.prepare('UPDATE users SET credits = credits - 1, updated_at = ? WHERE phone = ? AND credits > 0').bind(now, phone)
+        ])
       }
     }
-    
-    await env.MBTI_USERS?.put(phone, JSON.stringify(userData))
   } catch (err) {
-    console.error('Add credits error:', err.message)
+    console.error('Apply payment error:', err.message)
   }
 }
 

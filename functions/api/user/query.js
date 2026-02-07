@@ -22,25 +22,27 @@ export async function onRequestGet(context) {
       return Response.json({ error: '手机号格式不正确' }, { status: 400 })
     }
     
-    // 从 KV 获取数据
-    // KV read cache has a minimum TTL of 30s on Cloudflare
-    const data = await env.MBTI_USERS?.get(phone, { cacheTtl: 30 })
-    
-    if (!data) {
+    const db = env.MBTI_DB
+    const user = await db.prepare('SELECT phone, pin, credits FROM users WHERE phone = ?')
+      .bind(phone)
+      .first()
+
+    if (!user) {
       return noCacheResponse({ found: false, records: [], credits: 0 })
     }
-    
-    const userData = JSON.parse(data)
-    
-    // 验证PIN码
-    if (userData.pin && userData.pin !== pin) {
+
+    if (user.pin && user.pin !== pin) {
       return noCacheResponse({ error: 'PIN码错误', found: true, needPin: true }, 401)
     }
-    
-    return noCacheResponse({ 
-      found: true, 
-      records: userData.records,
-      credits: userData.credits || 0
+
+    const records = await db.prepare(
+      'SELECT result, question_set AS questionSet, ts AS timestamp, viewed FROM records WHERE phone = ? ORDER BY ts ASC'
+    ).bind(phone).all()
+
+    return noCacheResponse({
+      found: true,
+      records: records.results || [],
+      credits: user.credits || 0
     })
   } catch (err) {
     return noCacheResponse({ error: err.message }, 500)

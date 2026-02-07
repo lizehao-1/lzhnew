@@ -30,72 +30,55 @@ export async function onRequestPost(context) {
       return Response.json({ error: 'PIN码必须是4位数字' }, { status: 400 })
     }
     
-    // 获取现有数据
-    const existing = await env.MBTI_USERS?.get(phone)
-    const userData = existing ? JSON.parse(existing) : { phone, pin, credits: 0, records: [] }
-    
-    // 如果是新用户，设置PIN码；如果是老用户，验证PIN码
+    const db = env.MBTI_DB
+    const now = Date.now()
+
+    const existing = await db.prepare('SELECT phone, pin, credits FROM users WHERE phone = ?')
+      .bind(phone)
+      .first()
+
     if (existing) {
-      // 老用户：如果已有PIN码，需要验证
-      if (userData.pin && userData.pin !== pin) {
+      if (existing.pin && existing.pin !== pin) {
         return Response.json({ error: 'PIN码错误' }, { status: 401 })
       }
-      // 如果老用户没有PIN码（兼容旧数据），设置新PIN码
-      if (!userData.pin) {
-        userData.pin = pin
+      if (!existing.pin) {
+        await db.prepare('UPDATE users SET pin = ?, updated_at = ? WHERE phone = ?')
+          .bind(pin, now, phone)
+          .run()
       }
     } else {
-      // 新用户：设置PIN码
-      userData.pin = pin
+      await db.prepare('INSERT INTO users (phone, pin, credits, created_at, updated_at) VALUES (?, ?, 0, ?, ?)')
+        .bind(phone, pin, now, now)
+        .run()
     }
-    
-    // 确保有 credits 字段（兼容旧数据）
-    if (typeof userData.credits !== 'number') {
-      userData.credits = 0
-    }
-    
-    // 检查是否有相同结果的近期记录（5分钟内），避免重复创建
-    const now = Date.now()
-    const recentRecord = userData.records.find(r => 
-      r.result === result && 
-      r.questionSet === questionSet &&
-      (now - r.timestamp) < 5 * 60 * 1000  // 5分钟内
-    )
-    
-    if (recentRecord) {
-      // 返回已存在的记录，不重复创建
-      return Response.json({ 
-        success: true, 
-        recordCount: userData.records.length,
-        credits: userData.credits,
-        timestamp: recentRecord.timestamp,
-        isNewUser: false,
+
+    const recent = await db.prepare(
+      'SELECT ts FROM records WHERE phone = ? AND result = ? AND IFNULL(question_set, \"\") = IFNULL(?, \"\") AND ts > ? ORDER BY ts DESC LIMIT 1'
+    ).bind(phone, result, questionSet || '', now - 5 * 60 * 1000).first()
+
+    if (recent?.ts) {
+      const creditsRow = await db.prepare('SELECT credits FROM users WHERE phone = ?').bind(phone).first()
+      return Response.json({
+        success: true,
+        recordCount: null,
+        credits: creditsRow?.credits || 0,
+        timestamp: recent.ts,
+        isNewUser: !existing,
         existingRecord: true
       })
     }
-    
-    // 添加新记录（只存结果，不存答案，节省空间）
-    const newRecord = {
-      result,
-      questionSet,
+
+    await db.prepare('INSERT INTO records (phone, result, question_set, ts, viewed) VALUES (?, ?, ?, ?, 0)')
+      .bind(phone, result, questionSet || null, now)
+      .run()
+
+    const creditsRow = await db.prepare('SELECT credits FROM users WHERE phone = ?').bind(phone).first()
+
+    return Response.json({
+      success: true,
+      recordCount: null,
+      credits: creditsRow?.credits || 0,
       timestamp: now,
-      viewed: false  // 是否已使用积分查看
-    }
-    userData.records.push(newRecord)
-    
-    // 只保留最近 20 条记录
-    if (userData.records.length > 20) {
-      userData.records = userData.records.slice(-20)
-    }
-    
-    // 保存到 KV
-    await env.MBTI_USERS?.put(phone, JSON.stringify(userData))
-    
-    return Response.json({ 
-      success: true, 
-      recordCount: userData.records.length,
-      credits: userData.credits,
-      timestamp: newRecord.timestamp,
       isNewUser: !existing,
       existingRecord: false
     })

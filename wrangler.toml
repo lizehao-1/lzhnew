@@ -9,3 +9,8 @@ pages_build_output_dir = "dist"
 [[kv_namespaces]]
 binding = "MBTI_USERS"
 id = "0272b12877264d808bec5fbee5f4db93"
+
+[[d1_databases]]
+binding = "MBTI_DB"
+database_name = "mbti"
+database_id = "1ab7b8ed-ca7e-4efc-ba94-7d73e0e5886d"

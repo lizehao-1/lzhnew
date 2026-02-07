@@ -24,28 +24,33 @@ export async function onRequestPost(context) {
     
     const creditsToAdd = parseInt(credits) || 3
     
-    // 获取现有数据
-    const data = await env.MBTI_USERS?.get(phone)
-    
-    let userData
-    if (data) {
-      userData = JSON.parse(data)
-      if (typeof userData.credits !== 'number') {
-        userData.credits = 0
-      }
-      userData.credits += creditsToAdd
-    } else {
-      // 用户不存在，创建新用户
-      userData = { phone, credits: creditsToAdd, records: [] }
+    const db = env.MBTI_DB
+    const now = Date.now()
+
+    const existing = await db.prepare('SELECT credits FROM users WHERE phone = ?').bind(phone).first()
+    if (!existing) {
+      await db.prepare('INSERT INTO users (phone, pin, credits, created_at, updated_at) VALUES (?, ?, ?, ?, ?)')
+        .bind(phone, '', creditsToAdd, now, now)
+        .run()
+      return Response.json({
+        success: true,
+        phone,
+        creditsAdded: creditsToAdd,
+        totalCredits: creditsToAdd
+      })
     }
-    
-    await env.MBTI_USERS?.put(phone, JSON.stringify(userData))
-    
-    return Response.json({ 
-      success: true, 
+
+    await db.prepare('UPDATE users SET credits = credits + ?, updated_at = ? WHERE phone = ?')
+      .bind(creditsToAdd, now, phone)
+      .run()
+
+    const updated = await db.prepare('SELECT credits FROM users WHERE phone = ?').bind(phone).first()
+
+    return Response.json({
+      success: true,
       phone,
       creditsAdded: creditsToAdd,
-      totalCredits: userData.credits
+      totalCredits: updated?.credits ?? 0
     })
   } catch (err) {
     return Response.json({ error: err.message }, { status: 500 })
