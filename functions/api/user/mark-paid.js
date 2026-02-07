@@ -1,7 +1,9 @@
 /**
- * 标记用户已支付
+ * 标记用户已支付 - 增加积分
  * POST /api/user/mark-paid
  * Body: { phone, timestamp }
+ * 
+ * 支付成功后增加3次查看积分
  */
 export async function onRequestPost(context) {
   const { request, env } = context
@@ -22,18 +24,18 @@ export async function onRequestPost(context) {
     
     const userData = JSON.parse(data)
     
-    // 标记指定记录或最新记录为已支付
-    if (timestamp) {
-      const record = userData.records.find(r => r.timestamp === timestamp)
-      if (record) record.paid = true
-    } else if (userData.records.length > 0) {
-      userData.records[userData.records.length - 1].paid = true
+    // 确保有 credits 字段
+    if (typeof userData.credits !== 'number') {
+      userData.credits = 0
     }
+    
+    // 增加3次查看积分
+    userData.credits += 3
     
     // 保存回 KV
     await env.MBTI_USERS?.put(phone, JSON.stringify(userData))
     
-    return Response.json({ success: true })
+    return Response.json({ success: true, credits: userData.credits })
   } catch (err) {
     return Response.json({ error: err.message }, { status: 500 })
   }

@@ -17,11 +17,13 @@ export default function Payment() {
   const [result, setResult] = useState<string | null>(null)
   const [phone, setPhone] = useState('')
   const [phoneError, setPhoneError] = useState('')
-  const [step, setStep] = useState<'phone' | 'intro' | 'pay' | 'checking'>('phone')
+  const [step, setStep] = useState<'phone' | 'checking_credits' | 'intro' | 'pay' | 'checking'>('phone')
   const [payData, setPayData] = useState<PayData | null>(null)
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [, setCredits] = useState(0)
+  const [recordTimestamp, setRecordTimestamp] = useState<number | null>(null)
 
   useEffect(() => {
     const savedResult = localStorage.getItem('mbti_result')
@@ -60,21 +62,58 @@ export default function Payment() {
     }
     setPhoneError('')
     localStorage.setItem('mbti_phone', phone)
+    setStep('checking_credits')
     
-    // 保存测试结果到服务器
     try {
+      // 保存测试结果到服务器
       const answers = localStorage.getItem('mbti_answers')
       const questionSet = localStorage.getItem('mbti_question_set')
-      await fetch('/api/user/save', {
+      const saveResp = await fetch('/api/user/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone, result, answers: answers ? JSON.parse(answers) : {}, questionSet })
       })
+      const saveData = await saveResp.json()
+      
+      if (saveData.success) {
+        setCredits(saveData.credits || 0)
+        setRecordTimestamp(saveData.timestamp)
+        
+        // 如果有积分，直接使用积分查看
+        if (saveData.credits > 0) {
+          await useCredit(saveData.timestamp)
+        } else {
+          setStep('intro')
+        }
+      } else {
+        setStep('intro')
+      }
     } catch {
-      // 忽略保存失败，不影响流程
+      setStep('intro')
     }
-    
-    setStep('intro')
+  }
+
+  const useCredit = async (timestamp: number) => {
+    try {
+      const resp = await fetch('/api/user/use-credit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, timestamp })
+      })
+      const data = await resp.json()
+      
+      if (data.success) {
+        localStorage.setItem('mbti_paid', 'true')
+        navigate('/result')
+      } else if (data.needPayment) {
+        setCredits(0)
+        setStep('intro')
+      } else {
+        setStep('intro')
+      }
+    } catch {
+      setStep('intro')
+    }
   }
 
   const createOrder = async () => {
@@ -112,21 +151,30 @@ export default function Payment() {
         const resp = await fetch(`/api/zy/query-order?outTradeNo=${encodeURIComponent(payData.outTradeNo)}`)
         const data = await resp.json()
         if (data.paid) {
-          localStorage.setItem('mbti_paid', 'true')
-          // 标记服务器端已支付
+          // 标记服务器端已支付（增加积分）
           if (phone) {
-            fetch('/api/user/mark-paid', {
+            const markResp = await fetch('/api/user/mark-paid', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ phone })
-            }).catch(() => {})
+            })
+            const markData = await markResp.json()
+            if (markData.success && recordTimestamp) {
+              // 使用积分查看当前记录
+              await fetch('/api/user/use-credit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone, timestamp: recordTimestamp })
+              })
+            }
           }
+          localStorage.setItem('mbti_paid', 'true')
           navigate('/result')
         }
       } catch { /* ignore */ }
     }, 2000)
     return () => clearInterval(timer)
-  }, [payData, navigate, phone])
+  }, [payData, navigate, phone, recordTimestamp])
 
   const openPayment = () => {
     if (!payData) return
@@ -181,6 +229,14 @@ export default function Payment() {
           </div>
         )}
 
+        {/* 检查积分中 */}
+        {step === 'checking_credits' && (
+          <div className="text-center py-6">
+            <div className="h-10 w-10 animate-spin rounded-full border-2 border-slate-200 border-t-slate-800 mx-auto" />
+            <p className="mt-4 text-sm text-slate-600">正在检查账户...</p>
+          </div>
+        )}
+
         {/* 步骤2: 支付介绍 */}
         {step === 'intro' && (
           <div>
@@ -196,6 +252,11 @@ export default function Payment() {
                     <span>{b}</span>
                   </div>
                 ))}
+              </div>
+              <div className="mt-3 pt-3 border-t border-slate-200">
+                <p className="text-xs text-slate-500">
+                  💡 支付一次可查看 <span className="font-bold text-slate-700">3次</span> 完整报告（含2次免费重测）
+                </p>
               </div>
             </div>
             <button className="w-full mbti-button-primary" onClick={createOrder} disabled={loading}>

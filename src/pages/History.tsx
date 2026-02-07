@@ -5,7 +5,7 @@ import { personalities } from '../data/personalities'
 type Record = {
   result: string
   timestamp: number
-  paid: boolean
+  viewed?: boolean  // 是否已使用积分查看
   questionSet?: string
 }
 
@@ -15,6 +15,7 @@ export default function History() {
   const [phoneError, setPhoneError] = useState('')
   const [loading, setLoading] = useState(false)
   const [records, setRecords] = useState<Record[] | null>(null)
+  const [credits, setCredits] = useState(0)
   const [notFound, setNotFound] = useState(false)
 
   const validatePhone = (value: string) => {
@@ -39,9 +40,11 @@ export default function History() {
       
       if (data.found && data.records?.length > 0) {
         setRecords(data.records.reverse()) // 最新的在前
+        setCredits(data.credits || 0)
       } else {
         setNotFound(true)
         setRecords(null)
+        setCredits(0)
       }
     } catch {
       setPhoneError('查询失败，请重试')
@@ -50,14 +53,49 @@ export default function History() {
     }
   }
 
-  const viewResult = (record: Record) => {
-    if (!record.paid) {
-      alert('该记录未支付，无法查看完整报告')
+  const viewResult = async (record: Record) => {
+    // 如果已经查看过，直接跳转
+    if (record.viewed) {
+      localStorage.setItem('mbti_result', record.result)
+      localStorage.setItem('mbti_paid', 'true')
+      localStorage.setItem('mbti_phone', phone)
+      navigate('/result')
       return
     }
-    localStorage.setItem('mbti_result', record.result)
-    localStorage.setItem('mbti_paid', 'true')
-    navigate('/result')
+
+    // 如果没有积分，提示需要支付
+    if (credits <= 0) {
+      alert('积分不足，请先支付后查看完整报告')
+      return
+    }
+
+    // 使用积分查看
+    try {
+      const resp = await fetch('/api/user/use-credit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, timestamp: record.timestamp })
+      })
+      const data = await resp.json()
+      
+      if (data.success) {
+        setCredits(data.credits)
+        // 更新本地记录状态
+        setRecords(prev => prev?.map(r => 
+          r.timestamp === record.timestamp ? { ...r, viewed: true } : r
+        ) || null)
+        
+        localStorage.setItem('mbti_result', record.result)
+        localStorage.setItem('mbti_paid', 'true')
+        localStorage.setItem('mbti_phone', phone)
+        navigate('/result')
+      } else if (data.needPayment) {
+        alert('积分不足，请先支付后查看完整报告')
+        setCredits(0)
+      }
+    } catch {
+      alert('操作失败，请重试')
+    }
   }
 
   const formatDate = (timestamp: number) => {
@@ -103,26 +141,47 @@ export default function History() {
 
         {records && records.length > 0 && (
           <div className="space-y-3">
+            {/* 积分显示 */}
+            <div className="flex items-center justify-between p-3 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200">
+              <span className="text-sm text-amber-800">剩余查看次数</span>
+              <span className="text-xl font-black text-amber-600">{credits}</span>
+            </div>
+            
             <p className="text-xs text-slate-500">找到 {records.length} 条记录</p>
             {records.map((record, i) => {
               const p = personalities[record.result]
+              const canView = record.viewed || credits > 0
               return (
                 <div
                   key={i}
-                  className="rounded-xl border border-slate-200 bg-white/60 p-4 hover:border-slate-300 transition-colors cursor-pointer"
-                  onClick={() => viewResult(record)}
+                  className={`rounded-xl border p-4 transition-colors ${
+                    canView 
+                      ? 'border-slate-200 bg-white/60 hover:border-slate-300 cursor-pointer' 
+                      : 'border-slate-100 bg-slate-50/50 cursor-not-allowed'
+                  }`}
+                  onClick={() => canView && viewResult(record)}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <span className="text-2xl font-black text-slate-950">{record.result}</span>
+                      <span className={`text-2xl font-black ${canView ? 'text-slate-950' : 'text-slate-400'}`}>
+                        {record.result}
+                      </span>
                       <div>
-                        <div className="text-sm font-medium text-slate-700">{p?.name || '未知类型'}</div>
+                        <div className={`text-sm font-medium ${canView ? 'text-slate-700' : 'text-slate-400'}`}>
+                          {p?.name || '未知类型'}
+                        </div>
                         <div className="text-xs text-slate-400">{getSetName(record.questionSet)}</div>
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className={`text-xs px-2 py-0.5 rounded-full ${record.paid ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
-                        {record.paid ? '已支付' : '未支付'}
+                      <div className={`text-xs px-2 py-0.5 rounded-full ${
+                        record.viewed 
+                          ? 'bg-emerald-100 text-emerald-700' 
+                          : canView 
+                            ? 'bg-sky-100 text-sky-700'
+                            : 'bg-slate-100 text-slate-500'
+                      }`}>
+                        {record.viewed ? '已查看' : canView ? '可查看' : '需支付'}
                       </div>
                       <div className="text-xs text-slate-400 mt-1">{formatDate(record.timestamp)}</div>
                     </div>
@@ -130,6 +189,12 @@ export default function History() {
                 </div>
               )
             })}
+            
+            {credits === 0 && (
+              <p className="text-xs text-center text-slate-500 mt-4">
+                💡 支付 ¥1 可获得3次查看机会
+              </p>
+            )}
           </div>
         )}
 

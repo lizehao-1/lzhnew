@@ -1,6 +1,8 @@
 /**
  * 查询用户历史记录
  * GET /api/user/query?phone=xxx
+ * 
+ * 返回用户的所有测试记录和剩余积分
  */
 export async function onRequestGet(context) {
   const { request, env } = context
@@ -22,11 +24,15 @@ export async function onRequestGet(context) {
     const data = await env.MBTI_USERS?.get(phone)
     
     if (!data) {
-      return Response.json({ found: false, records: [] })
+      return Response.json({ found: false, records: [], credits: 0 })
     }
     
     const userData = JSON.parse(data)
-    return Response.json({ found: true, records: userData.records })
+    return Response.json({ 
+      found: true, 
+      records: userData.records,
+      credits: userData.credits || 0
+    })
   } catch (err) {
     return Response.json({ error: err.message }, { status: 500 })
   }
