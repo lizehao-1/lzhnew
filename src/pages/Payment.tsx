@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import QRCode from 'qrcode'
 
@@ -13,12 +13,16 @@ type PayData = {
 }
 
 /**
- * 支付页面流程：
- * 1. phone: 输入手机号和PIN码
- * 2. checking_credits: 检查是否有积分
- * 3. intro: 展示支付介绍（无积分时）
- * 4. pay: 显示支付二维码/链接
- * 5. checking: 轮询确认支付状态
+ * 支付页面 - 按行业最佳实践设计
+ * 
+ * 流程：
+ * 1. 输入手机号 → 保存记录 → 检查积分
+ * 2. 有积分 → 使用积分 → 跳转结果
+ * 3. 无积分 → 创建订单 → 支付 → 轮询确认
+ * 
+ * 关键点：
+ * - 后端 query-order 会自动补偿积分（如果回调失败）
+ * - 前端只需轮询订单状态，不需要复杂的积分检查逻辑
  */
 export default function Payment() {
   const navigate = useNavigate()
@@ -26,13 +30,13 @@ export default function Payment() {
   const [phone, setPhone] = useState('')
   const [pin, setPin] = useState('')
   const [phoneError, setPhoneError] = useState('')
-  const [step, setStep] = useState<'phone' | 'checking_credits' | 'intro' | 'pay' | 'checking'>('phone')
+  const [step, setStep] = useState<'phone' | 'checking' | 'intro' | 'pay' | 'polling'>('phone')
   const [payData, setPayData] = useState<PayData | null>(null)
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const [, setPollCount] = useState(0)
-  const MAX_POLLS = 150 // 最多轮询150次（5分钟）
+  const [pollCount, setPollCount] = useState(0)
+  const MAX_POLLS = 30 // 最多轮询30次（60秒）
 
   // 初始化
   useEffect(() => {
@@ -48,129 +52,64 @@ export default function Payment() {
     if (savedPhone) setPhone(savedPhone)
     if (savedPin) setPin(savedPin)
     
-    // 检查是否有未完成的订单
+    // 检查未完成订单
     const savedOrder = localStorage.getItem('mbti_pending_order')
     if (savedOrder) {
       try {
         const order = JSON.parse(savedOrder)
-        // 检查订单是否超过30分钟
         const orderTime = order.outTradeNo?.match(/_(\d+)_/)?.[1]
-        if (orderTime && Date.now() - parseInt(orderTime) > 30 * 60 * 1000) {
-          localStorage.removeItem('mbti_pending_order')
-        } else if (savedPhone && savedPin) {
-          // 有未完成订单，先检查积分状态
-          checkAfterPaymentReturn(savedPhone, savedPin, order)
+        // 30分钟内的订单才恢复
+        if (orderTime && Date.now() - parseInt(orderTime) < 30 * 60 * 1000) {
+          setPayData(order)
+          setStep('polling')
           return
         }
+        localStorage.removeItem('mbti_pending_order')
       } catch { 
         localStorage.removeItem('mbti_pending_order')
       }
     }
     
-    // 有登录信息，自动检查积分
+    // 有登录信息，自动检查
     if (savedPhone && savedPin && /^1[3-9]\d{9}$/.test(savedPhone) && /^\d{4}$/.test(savedPin)) {
-      setTimeout(() => {
-        checkCreditsAndSave(savedResult, savedPhone, savedPin)
-      }, 100)
+      setTimeout(() => handleAutoLogin(savedResult, savedPhone, savedPin), 100)
     }
   }, [])
 
-  // 支付返回后检查积分状态
-  const checkAfterPaymentReturn = async (phone: string, pin: string, order: PayData) => {
-    setStep('checking_credits')
-    setPhone(phone)
-    setPin(pin)
-    
-    try {
-      const queryResp = await fetch(`/api/user/query?phone=${encodeURIComponent(phone)}&pin=${encodeURIComponent(pin)}`)
-      const queryData = await queryResp.json()
-      
-      if (queryData.found) {
-        const records = queryData.records || []
-        // 找到最新的已查看记录
-        const viewedRecord = [...records].reverse().find(r => r.viewed)
-        
-        if (viewedRecord) {
-          // 有已查看的记录，说明支付成功且回调已执行
-          localStorage.removeItem('mbti_pending_order')
-          localStorage.setItem('mbti_paid', 'true')
-          localStorage.setItem('mbti_result', viewedRecord.result)
-          window.dispatchEvent(new Event('mbti-login-change'))
-          navigate('/result')
-          return
-        }
-        
-        // 没有已查看记录，检查是否有积分
-        if (queryData.credits > 0) {
-          // 有积分，找最新未查看记录使用积分
-          const latestUnviewed = [...records].reverse().find(r => !r.viewed)
-          if (latestUnviewed) {
-            const useResp = await fetch('/api/user/use-credit', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ phone, timestamp: latestUnviewed.timestamp })
-            })
-            const useData = await useResp.json()
-            if (useData.success) {
-              localStorage.removeItem('mbti_pending_order')
-              localStorage.setItem('mbti_paid', 'true')
-              localStorage.setItem('mbti_result', latestUnviewed.result)
-              window.dispatchEvent(new Event('mbti-login-change'))
-              navigate('/result')
-              return
-            }
-          }
-        }
-      }
-      
-      // 没有积分或没有记录，继续轮询订单
-      setPayData(order)
-      setStep('checking')
-    } catch {
-      setPayData(order)
-      setStep('checking')
-    }
-  }
-
-  // 检查积分并保存记录
-  const checkCreditsAndSave = async (result: string, phone: string, pin: string) => {
-    setStep('checking_credits')
+  // 自动登录检查
+  const handleAutoLogin = async (result: string, phone: string, pin: string) => {
+    setStep('checking')
     try {
       const questionSet = localStorage.getItem('mbti_question_set')
-      const saveResp = await fetch('/api/user/save', {
+      const resp = await fetch('/api/user/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone, pin, result, questionSet })
       })
-      const saveData = await saveResp.json()
+      const data = await resp.json()
       
-      if (saveData.error === 'PIN码错误') {
+      if (data.error === 'PIN码错误') {
         setStep('phone')
         setPhoneError('密码错误，请重新输入')
         return
       }
       
-      if (saveData.success) {
-        if (saveData.credits > 0) {
-          // 有积分，使用积分查看
-          const useResp = await fetch('/api/user/use-credit', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ phone, timestamp: saveData.timestamp })
-          })
-          const useData = await useResp.json()
-          
-          if (useData.success) {
-            localStorage.setItem('mbti_paid', 'true')
-            window.dispatchEvent(new Event('mbti-login-change'))
-            navigate('/result')
-            return
-          }
+      if (data.success && data.credits > 0) {
+        // 有积分，使用积分
+        const useResp = await fetch('/api/user/use-credit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone, timestamp: data.timestamp })
+        })
+        const useData = await useResp.json()
+        if (useData.success) {
+          localStorage.setItem('mbti_paid', 'true')
+          window.dispatchEvent(new Event('mbti-login-change'))
+          navigate('/result')
+          return
         }
-        setStep('intro')
-      } else {
-        setStep('intro')
       }
+      setStep('intro')
     } catch {
       setStep('intro')
     }
@@ -184,27 +123,13 @@ export default function Payment() {
     '本周可执行的行动建议',
   ], [])
 
-  const validatePhone = (value: string) => {
-    if (!value) return '请输入手机号'
-    if (!/^1[3-9]\d{9}$/.test(value)) return '请输入正确的手机号'
-    return ''
-  }
-
-  const validatePin = (value: string) => {
-    if (!value) return '请输入4位PIN码'
-    if (!/^\d{4}$/.test(value)) return 'PIN码必须是4位数字'
-    return ''
-  }
-
   const handlePhoneSubmit = async () => {
-    const phoneErr = validatePhone(phone)
-    if (phoneErr) {
-      setPhoneError(phoneErr)
+    if (!phone || !/^1[3-9]\d{9}$/.test(phone)) {
+      setPhoneError('请输入正确的手机号')
       return
     }
-    const pinErr = validatePin(pin)
-    if (pinErr) {
-      setPhoneError(pinErr)
+    if (!pin || !/^\d{4}$/.test(pin)) {
+      setPhoneError('PIN码必须是4位数字')
       return
     }
     setPhoneError('')
@@ -213,7 +138,7 @@ export default function Payment() {
     window.dispatchEvent(new Event('mbti-login-change'))
     
     if (result) {
-      await checkCreditsAndSave(result, phone, pin)
+      await handleAutoLogin(result, phone, pin)
     }
   }
 
@@ -233,13 +158,10 @@ export default function Payment() {
       setPayData(data)
       setStep('pay')
       setPollCount(0)
-      
-      // 保存订单信息
       localStorage.setItem('mbti_pending_order', JSON.stringify(data))
 
       if (data.payType === 'qrcode') {
-        const url = await QRCode.toDataURL(data.payInfo, { width: 200 })
-        setQrDataUrl(url)
+        setQrDataUrl(await QRCode.toDataURL(data.payInfo, { width: 200 }))
       } else {
         setQrDataUrl(null)
       }
@@ -250,71 +172,55 @@ export default function Payment() {
     }
   }
 
+  // 查询订单状态（后端会自动补偿积分）
+  const checkOrderStatus = useCallback(async () => {
+    if (!payData) return false
+    
+    try {
+      const resp = await fetch(`/api/zy/query-order?outTradeNo=${encodeURIComponent(payData.outTradeNo)}`)
+      const data = await resp.json()
+      
+      if (data.paid) {
+        // 订单已支付，后端已自动补偿积分
+        localStorage.removeItem('mbti_pending_order')
+        localStorage.setItem('mbti_paid', 'true')
+        window.dispatchEvent(new Event('mbti-login-change'))
+        navigate('/result')
+        return true
+      }
+    } catch { /* ignore */ }
+    return false
+  }, [payData, navigate])
+
   // 轮询支付状态
   useEffect(() => {
-    if (!payData || step !== 'checking') return
+    if (step !== 'polling' || !payData) return
     
     let cancelled = false
     
-    const checkPayment = async () => {
+    const poll = async () => {
       if (cancelled) return
+      
+      const paid = await checkOrderStatus()
+      if (paid || cancelled) return
       
       setPollCount(prev => {
         if (prev >= MAX_POLLS) {
-          setError('支付超时，请点击"取消等待"后重试')
+          setError('支付确认超时，请点击"手动刷新"重试')
           return prev
         }
         return prev + 1
       })
-      
-      try {
-        const resp = await fetch(`/api/zy/query-order?outTradeNo=${encodeURIComponent(payData.outTradeNo)}`)
-        const data = await resp.json()
-        
-        if (data.paid && !cancelled) {
-          // 支付成功，等待回调执行
-          await new Promise(r => setTimeout(r, 1500))
-          
-          // 再次检查积分状态确认回调已执行
-          const savedPhone = phone || localStorage.getItem('mbti_phone') || ''
-          const savedPin = pin || localStorage.getItem('mbti_pin') || ''
-          
-          if (savedPhone && savedPin) {
-            const queryResp = await fetch(`/api/user/query?phone=${encodeURIComponent(savedPhone)}&pin=${encodeURIComponent(savedPin)}`)
-            const queryData = await queryResp.json()
-            
-            if (queryData.found) {
-              const records = queryData.records || []
-              const viewedRecord = [...records].reverse().find(r => r.viewed)
-              
-              if (viewedRecord) {
-                localStorage.removeItem('mbti_pending_order')
-                localStorage.setItem('mbti_paid', 'true')
-                localStorage.setItem('mbti_result', viewedRecord.result)
-                window.dispatchEvent(new Event('mbti-login-change'))
-                navigate('/result')
-                return
-              }
-            }
-          }
-          
-          // 回调可能还没执行完，直接跳转（回调会在后台完成）
-          localStorage.removeItem('mbti_pending_order')
-          localStorage.setItem('mbti_paid', 'true')
-          window.dispatchEvent(new Event('mbti-login-change'))
-          navigate('/result')
-        }
-      } catch { /* ignore */ }
     }
     
-    const timer = setInterval(checkPayment, 2000)
-    checkPayment() // 立即执行一次
+    poll() // 立即执行一次
+    const timer = setInterval(poll, 2000)
     
     return () => {
       cancelled = true
       clearInterval(timer)
     }
-  }, [payData, step, navigate, phone, pin])
+  }, [step, payData, checkOrderStatus])
 
   const openPayment = () => {
     if (!payData) return
@@ -329,6 +235,17 @@ export default function Payment() {
     }
   }
 
+  // 手动刷新
+  const manualRefresh = async () => {
+    setError(null)
+    setPollCount(0)
+    const paid = await checkOrderStatus()
+    if (!paid) {
+      setError('暂未查询到支付结果，请稍后再试')
+    }
+  }
+
+  // 取消并重新支付
   const cancelAndRetry = () => {
     localStorage.removeItem('mbti_pending_order')
     setPayData(null)
@@ -349,7 +266,7 @@ export default function Payment() {
           <div className="text-4xl font-black text-slate-950">{result}</div>
         </div>
 
-        {/* 步骤1: 输入手机号和PIN码 */}
+        {/* 步骤1: 输入手机号 */}
         {step === 'phone' && (
           <div>
             <div className="text-center mb-4">
@@ -364,29 +281,22 @@ export default function Payment() {
                 placeholder="请输入手机号"
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-slate-400 focus:outline-none text-center text-lg tracking-widest"
               />
-              <div>
-                <input
-                  type="tel"
-                  value={pin}
-                  onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                  placeholder="设置4位数字密码"
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-slate-400 focus:outline-none text-center text-lg tracking-widest"
-                />
-                <p className="text-xs text-slate-400 mt-2 text-center leading-relaxed">
-                  🔒 密码用于保护你的测试记录，防止他人查看<br/>
-                  我们只保存测试结果，不收集任何个人信息
-                </p>
-              </div>
+              <input
+                type="tel"
+                value={pin}
+                onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                placeholder="设置4位数字密码"
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-slate-400 focus:outline-none text-center text-lg tracking-widest"
+              />
+              <p className="text-xs text-slate-400 text-center">🔒 密码用于保护你的测试记录</p>
               {phoneError && <p className="text-xs text-red-500 text-center">{phoneError}</p>}
-              <button className="w-full mbti-button-primary" onClick={handlePhoneSubmit}>
-                继续
-              </button>
+              <button className="w-full mbti-button-primary" onClick={handlePhoneSubmit}>继续</button>
             </div>
           </div>
         )}
 
-        {/* 检查积分中 */}
-        {step === 'checking_credits' && (
+        {/* 检查中 */}
+        {step === 'checking' && (
           <div className="text-center py-6">
             <div className="h-10 w-10 animate-spin rounded-full border-2 border-slate-200 border-t-slate-800 mx-auto" />
             <p className="mt-4 text-sm text-slate-600">正在检查账户...</p>
@@ -411,7 +321,7 @@ export default function Payment() {
               </div>
               <div className="mt-3 pt-3 border-t border-slate-200">
                 <p className="text-xs text-slate-500">
-                  � 支付一次可查看 <span className="font-bold text-slate-700">3次</span> 完整报告（含2次免费重测）
+                  💡 支付一次可查看 <span className="font-bold text-slate-700">3次</span> 完整报告
                 </p>
               </div>
             </div>
@@ -440,26 +350,37 @@ export default function Payment() {
                 <button className="mbti-button-primary" onClick={openPayment}>打开支付</button>
               </div>
             )}
-            <button className="w-full mt-4 mbti-button-ghost" onClick={() => setStep('checking')}>
+            <button className="w-full mt-4 mbti-button-ghost" onClick={() => setStep('polling')}>
               我已支付
             </button>
             <p className="mt-3 text-xs text-slate-400 text-center">订单号: {payData.outTradeNo}</p>
           </div>
         )}
 
-        {/* 步骤4: 确认中 */}
-        {step === 'checking' && (
+        {/* 步骤4: 轮询确认 */}
+        {step === 'polling' && (
           <div className="text-center py-6">
-            <div className="h-10 w-10 animate-spin rounded-full border-2 border-slate-200 border-t-slate-800 mx-auto" />
-            <p className="mt-4 text-sm text-slate-600">正在确认支付...</p>
-            <p className="mt-1 text-xs text-slate-400">确认后自动跳转</p>
-            {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
-            <button 
-              className="mt-4 text-xs text-slate-400 hover:text-slate-600 underline"
-              onClick={cancelAndRetry}
-            >
-              取消等待，重新支付
-            </button>
+            {pollCount < MAX_POLLS && !error ? (
+              <>
+                <div className="h-10 w-10 animate-spin rounded-full border-2 border-slate-200 border-t-slate-800 mx-auto" />
+                <p className="mt-4 text-sm text-slate-600">正在确认支付...</p>
+                <p className="mt-1 text-xs text-slate-400">确认后自动跳转</p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-slate-600">支付确认超时</p>
+                <p className="mt-1 text-xs text-slate-400">如已支付，请点击手动刷新</p>
+              </>
+            )}
+            {error && <p className="mt-2 text-xs text-amber-600">{error}</p>}
+            <div className="mt-4 space-y-2">
+              <button className="w-full mbti-button-primary" onClick={manualRefresh}>
+                手动刷新
+              </button>
+              <button className="text-xs text-slate-400 hover:text-slate-600 underline" onClick={cancelAndRetry}>
+                取消，重新支付
+              </button>
+            </div>
           </div>
         )}
 

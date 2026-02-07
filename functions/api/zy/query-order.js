@@ -1,6 +1,8 @@
 /**
  * Cloudflare Pages Function: 查询订单状态
  * GET /api/zy/query-order?outTradeNo=xxx
+ * 
+ * 如果订单已支付但积分未到账，会自动补偿增加积分
  */
 
 export async function onRequest(context) {
@@ -9,6 +11,7 @@ export async function onRequest(context) {
   const headers = {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
+    'Cache-Control': 'no-store',
   }
 
   if (request.method === 'OPTIONS') {
@@ -54,6 +57,12 @@ export async function onRequest(context) {
     }
 
     const paid = Number(resp.status) === 1
+    
+    // 如果订单已支付，检查是否需要补偿积分
+    if (paid) {
+      await compensateCreditsIfNeeded(env, outTradeNo, resp.param)
+    }
+    
     return new Response(JSON.stringify({ 
       outTradeNo, 
       paid, 
@@ -65,6 +74,73 @@ export async function onRequest(context) {
   } catch (err) {
     console.error('Query error:', err.message)
     return new Response(JSON.stringify({ error: err.message }), { status: 500, headers })
+  }
+}
+
+/**
+ * 补偿积分：如果订单已支付但回调未执行，手动增加积分
+ */
+async function compensateCreditsIfNeeded(env, outTradeNo, paramValue) {
+  try {
+    // 检查订单是否已处理
+    const orderKey = `ORDER_${outTradeNo}`
+    const existingOrder = await env.MBTI_USERS?.get(orderKey)
+    if (existingOrder) {
+      console.log('Order already processed:', outTradeNo)
+      return // 已处理，无需补偿
+    }
+    
+    // 从订单号提取手机号
+    const parts = outTradeNo.split('_')
+    if (parts.length < 2 || parts[0] !== 'MBTI') return
+    
+    const phone = parts[1]
+    if (!/^1[3-9]\d{9}$/.test(phone)) return
+    
+    // 判断积分数量
+    const isRecharge = paramValue?.startsWith('RECHARGE_')
+    let creditsToAdd = 3
+    if (isRecharge) {
+      const rechargeCredits = parseInt(paramValue.replace('RECHARGE_', ''), 10)
+      if (rechargeCredits > 0) creditsToAdd = rechargeCredits
+    }
+    
+    // 增加积分
+    const data = await env.MBTI_USERS?.get(phone)
+    if (!data) {
+      // 用户不存在，创建
+      const userData = { phone, credits: creditsToAdd, records: [] }
+      await env.MBTI_USERS?.put(phone, JSON.stringify(userData))
+    } else {
+      const userData = JSON.parse(data)
+      if (typeof userData.credits !== 'number') userData.credits = 0
+      userData.credits += creditsToAdd
+      
+      // 如果是普通支付，标记最新记录为已查看
+      if (!isRecharge && userData.records?.length > 0) {
+        const latestRecord = userData.records[userData.records.length - 1]
+        if (latestRecord && !latestRecord.viewed) {
+          userData.credits -= 1
+          latestRecord.viewed = true
+        }
+      }
+      
+      await env.MBTI_USERS?.put(phone, JSON.stringify(userData))
+    }
+    
+    // 标记订单已处理
+    await env.MBTI_USERS?.put(orderKey, JSON.stringify({
+      processed: true,
+      phone,
+      credits: creditsToAdd,
+      isRecharge,
+      compensated: true, // 标记为补偿的
+      time: Date.now()
+    }))
+    
+    console.log('Compensated credits for:', phone, 'amount:', creditsToAdd)
+  } catch (err) {
+    console.error('Compensate error:', err.message)
   }
 }
 
