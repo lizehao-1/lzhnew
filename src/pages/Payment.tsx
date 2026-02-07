@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from 'react'
+﻿import { useEffect, useMemo, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import QRCode from 'qrcode'
 
@@ -30,7 +30,9 @@ export default function Payment() {
   const [phone, setPhone] = useState('')
   const [pin, setPin] = useState('')
   const [phoneError, setPhoneError] = useState('')
-  const [step, setStep] = useState<'phone' | 'checking' | 'intro' | 'pay' | 'polling'>('phone')
+  const [step, setStep] = useState<'phone' | 'checking' | 'intro' | 'pay' | 'polling'>(() => {
+    return localStorage.getItem('mbti_from_test') === '1' ? 'checking' : 'phone'
+  })
   const [payData, setPayData] = useState<PayData | null>(null)
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -62,6 +64,7 @@ export default function Payment() {
         if (orderTime && Date.now() - orderTime < 30 * 60 * 1000) {
           setPayData(order)
           setStep('polling')
+          localStorage.removeItem('mbti_from_test')
           return
         }
         localStorage.removeItem('mbti_pending_order')
@@ -72,8 +75,14 @@ export default function Payment() {
     
     // 有登录信息，自动检查
     if (savedPhone && savedPin && /^1[3-9]\d{9}$/.test(savedPhone) && /^\d{4}$/.test(savedPin)) {
-      setTimeout(() => handleAutoLogin(savedResult, savedPhone, savedPin), 100)
+      handleAutoLogin(savedResult, savedPhone, savedPin).finally(() => {
+        localStorage.removeItem('mbti_from_test')
+      })
+      return
     }
+
+    localStorage.removeItem('mbti_from_test')
+    setStep('phone')
   }, [])
 
   // 自动登录检查
@@ -279,7 +288,7 @@ export default function Payment() {
   const displayPrice = payData?.money || DEFAULT_PRICE
 
   return (
-    <div className="mx-auto max-w-xl px-4 py-10 page-enter">
+    <div className="mx-auto max-w-xl px-4 py-10">
       <div className="mbti-card p-6">
         {/* 结果预览 */}
         <div className="text-center mb-6">

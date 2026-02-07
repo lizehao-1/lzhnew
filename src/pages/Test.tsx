@@ -121,6 +121,7 @@ export default function Test() {
       localStorage.setItem('mbti_answers', JSON.stringify(answersRef.current))
       localStorage.setItem('mbti_result', result)
       localStorage.setItem('mbti_question_set', selectedSet || '48')
+      localStorage.setItem('mbti_from_test', '1')
       setIsFinishing(true)
       setIsTransitioning(true)
       const target = '/payment'
