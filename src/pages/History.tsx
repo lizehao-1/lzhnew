@@ -19,26 +19,40 @@ export default function History() {
   const [credits, setCredits] = useState(0)
   const [notFound, setNotFound] = useState(false)
 
-  // 自动填充已保存的登录信息并自动查询
+  // 每次进入页面都重新查询（使用时间戳确保每次都执行）
   useEffect(() => {
     const savedPhone = localStorage.getItem('mbti_phone')
     const savedPin = localStorage.getItem('mbti_pin')
     if (savedPhone && savedPin) {
       setPhone(savedPhone)
       setPin(savedPin)
-      // 自动查询
-      autoQuery(savedPhone, savedPin)
+      // 自动查询最新数据
+      fetchData(savedPhone, savedPin)
     }
   }, [])
 
-  const autoQuery = async (phone: string, pin: string) => {
+  // 页面获得焦点时也刷新数据（从支付页返回时）
+  useEffect(() => {
+    const handleFocus = () => {
+      const savedPhone = localStorage.getItem('mbti_phone')
+      const savedPin = localStorage.getItem('mbti_pin')
+      if (savedPhone && savedPin) {
+        fetchData(savedPhone, savedPin)
+      }
+    }
+    window.addEventListener('focus', handleFocus)
+    return () => window.removeEventListener('focus', handleFocus)
+  }, [])
+
+  const fetchData = async (phone: string, pin: string) => {
     setLoading(true)
     try {
-      const resp = await fetch(`/api/user/query?phone=${encodeURIComponent(phone)}&pin=${encodeURIComponent(pin)}`)
+      const resp = await fetch(`/api/user/query?phone=${encodeURIComponent(phone)}&pin=${encodeURIComponent(pin)}&t=${Date.now()}`)
       const data = await resp.json()
-      if (data.found && !data.error && data.records?.length > 0) {
-        setRecords(data.records.reverse())
+      if (data.found && !data.error) {
+        setRecords(data.records?.length > 0 ? [...data.records].reverse() : [])
         setCredits(data.credits || 0)
+        setNotFound(data.records?.length === 0)
       }
     } catch { /* ignore */ }
     finally { setLoading(false) }
@@ -72,7 +86,7 @@ export default function History() {
     setNotFound(false)
 
     try {
-      const resp = await fetch(`/api/user/query?phone=${encodeURIComponent(phone)}&pin=${encodeURIComponent(pin)}`)
+      const resp = await fetch(`/api/user/query?phone=${encodeURIComponent(phone)}&pin=${encodeURIComponent(pin)}&t=${Date.now()}`)
       const data = await resp.json()
       
       if (data.error === 'PIN码错误') {
