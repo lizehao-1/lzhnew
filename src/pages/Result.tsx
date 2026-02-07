@@ -1,17 +1,102 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { personalities, Personality } from '../data/personalities'
+import { questions } from '../data/questions'
 
-function Section({
-  title,
-  children,
-}: {
-  title: string
-  children: React.ReactNode
+type Answers = Record<number, number>
+
+// 计算各维度得分
+function calculateDimensionScores(answers: Answers) {
+  const scores = { E: 0, I: 0, S: 0, N: 0, T: 0, F: 0, J: 0, P: 0 }
+  
+  questions.forEach((q) => {
+    const answer = answers[q.id] ?? 3
+    const score = answer - 3
+
+    if (q.dimension === 'EI') {
+      if (q.direction === 'positive') scores.E += score
+      else scores.I += score
+    } else if (q.dimension === 'SN') {
+      if (q.direction === 'positive') scores.S += score
+      else scores.N += score
+    } else if (q.dimension === 'TF') {
+      if (q.direction === 'positive') scores.T += score
+      else scores.F += score
+    } else if (q.dimension === 'JP') {
+      if (q.direction === 'positive') scores.J += score
+      else scores.P += score
+    }
+  })
+
+  return scores
+}
+
+// 计算维度百分比
+function getDimensionPercentages(scores: ReturnType<typeof calculateDimensionScores>) {
+  const getPercent = (a: number, b: number) => {
+    const total = Math.abs(a) + Math.abs(b)
+    if (total === 0) return 50
+    return Math.round((Math.max(a, 0) / (Math.max(a, 0) + Math.max(b, 0) + 0.01)) * 100)
+  }
+  
+  return {
+    E: getPercent(scores.E, scores.I),
+    I: getPercent(scores.I, scores.E),
+    S: getPercent(scores.S, scores.N),
+    N: getPercent(scores.N, scores.S),
+    T: getPercent(scores.T, scores.F),
+    F: getPercent(scores.F, scores.T),
+    J: getPercent(scores.J, scores.P),
+    P: getPercent(scores.P, scores.J),
+  }
+}
+
+function DimensionBar({ left, right, leftPercent, leftLabel, rightLabel, leftDesc, rightDesc }: {
+  left: string
+  right: string
+  leftPercent: number
+  leftLabel: string
+  rightLabel: string
+  leftDesc: string
+  rightDesc: string
 }) {
+  const isLeftDominant = leftPercent >= 50
   return (
-    <section className="mbti-card p-7 sm:p-9">
-      <h3 className="text-lg font-black tracking-tight text-slate-950">{title}</h3>
+    <div className="rounded-2xl border border-slate-200 bg-white/60 p-5">
+      <div className="flex items-center justify-between mb-3">
+        <div className="text-left">
+          <div className={`text-lg font-black ${isLeftDominant ? 'text-sky-600' : 'text-slate-400'}`}>{left}</div>
+          <div className="text-xs text-slate-500">{leftLabel}</div>
+        </div>
+        <div className="text-right">
+          <div className={`text-lg font-black ${!isLeftDominant ? 'text-orange-500' : 'text-slate-400'}`}>{right}</div>
+          <div className="text-xs text-slate-500">{rightLabel}</div>
+        </div>
+      </div>
+      <div className="h-3 rounded-full bg-slate-100 overflow-hidden">
+        <div 
+          className={`h-full rounded-full transition-all duration-500 ${isLeftDominant ? 'bg-gradient-to-r from-sky-500 to-sky-400' : 'bg-gradient-to-r from-orange-400 to-orange-500'}`}
+          style={{ width: `${isLeftDominant ? leftPercent : 100 - leftPercent}%`, marginLeft: isLeftDominant ? 0 : 'auto' }}
+        />
+      </div>
+      <div className="flex justify-between mt-2 text-xs text-slate-500">
+        <span>{leftPercent}%</span>
+        <span>{100 - leftPercent}%</span>
+      </div>
+      <p className="mt-3 text-xs text-slate-600 leading-relaxed">
+        {isLeftDominant ? leftDesc : rightDesc}
+      </p>
+    </div>
+  )
+}
+
+function Section({ title, icon, children }: { title: string; icon?: string; children: React.ReactNode }) {
+  return (
+    <section className="mbti-card p-6 sm:p-7">
+      <h3 className="flex items-center gap-2 text-base font-black tracking-tight text-slate-950">
+        {icon && <span>{icon}</span>}
+        {title}
+      </h3>
       <div className="mt-4">{children}</div>
     </section>
   )
@@ -20,11 +105,13 @@ function Section({
 export default function Result() {
   const navigate = useNavigate()
   const [personality, setPersonality] = useState<Personality | null>(null)
+  const [answers, setAnswers] = useState<Answers>({})
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     const result = localStorage.getItem('mbti_result')
     const paid = localStorage.getItem('mbti_paid')
+    const savedAnswers = localStorage.getItem('mbti_answers')
 
     if (!result) {
       navigate('/')
@@ -38,7 +125,11 @@ export default function Result() {
 
     const p = personalities[result]
     if (p) setPersonality(p)
+    if (savedAnswers) setAnswers(JSON.parse(savedAnswers))
   }, [navigate])
+
+  const scores = useMemo(() => calculateDimensionScores(answers), [answers])
+  const percentages = useMemo(() => getDimensionPercentages(scores), [scores])
 
   const restart = () => {
     localStorage.removeItem('mbti_answers')
@@ -49,121 +140,142 @@ export default function Result() {
 
   const shareText = useMemo(() => {
     if (!personality) return ''
-    return `我的 MBTI 类型：${personality.type}（${personality.name}｜${personality.nickname}）`
+    return `我的 MBTI 类型是 ${personality.type}（${personality.name}｜${personality.nickname}）\n\n${personality.description.slice(0, 80)}...\n\n🔗 测试地址：${window.location.origin}`
   }, [personality])
 
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(shareText)
       setCopied(true)
-      setTimeout(() => setCopied(false), 1200)
-    } catch {
-      // ignore
-    }
+      setTimeout(() => setCopied(false), 1500)
+    } catch { /* ignore */ }
   }
 
   if (!personality) return null
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-10">
-      <div className="mb-6 grid gap-4 lg:grid-cols-3">
-        <div className="mbti-card p-7 sm:p-9 lg:col-span-2">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/60 px-3 py-1 text-xs font-semibold text-slate-600">
-                你的类型
-                <span className="h-1 w-1 rounded-full bg-slate-300" />
-                完整解析
+    <div className="mx-auto max-w-6xl px-4 py-8">
+      {/* 顶部主卡片 */}
+      <div className="mbti-card p-6 sm:p-8 mb-6">
+        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
+          <div className="flex-1">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-1.5 text-xs font-semibold text-emerald-700">
+              ✨ 测试完成 · 完整人格解析报告
+            </div>
+            
+            <div className="flex items-end gap-4 mb-4">
+              <div className="text-6xl sm:text-7xl font-black tracking-tighter text-slate-950">
+                {personality.type}
               </div>
-              <div className="flex items-end gap-4">
-                <div className="text-5xl font-black tracking-tight text-slate-950 sm:text-6xl">
-                  {personality.type}
-                </div>
-                <div className="pb-1">
-                  <div className="text-xl font-black text-slate-950">{personality.name}</div>
-                  <div className="text-sm text-slate-600">{personality.nickname}</div>
-                </div>
+              <div className="pb-2">
+                <div className="text-2xl font-black text-slate-950">{personality.name}</div>
+                <div className="text-base text-slate-600">{personality.nickname}</div>
               </div>
-              <p className="mt-5 max-w-2xl text-sm leading-relaxed text-slate-600">
-                {personality.description}
-              </p>
             </div>
 
-            <div className="flex flex-col gap-2">
-              <button className="mbti-button-primary" onClick={copy} disabled={!shareText}>
-                {copied ? '已复制' : '复制分享文案'}
-              </button>
-              <button className="mbti-button-ghost" onClick={restart}>
-                重新测试
-              </button>
-            </div>
+            <p className="text-sm leading-relaxed text-slate-600 max-w-2xl">
+              {personality.description}
+            </p>
           </div>
-        </div>
 
-        <div className="mbti-card p-7 sm:p-9">
-          <div className="text-xs font-semibold text-slate-500">建议用法</div>
-          <div className="mt-3 space-y-3 text-sm leading-relaxed text-slate-600">
-            <div>
-              1. 先读“优势/盲点”，对照你最近一次高压场景。
-            </div>
-            <div>
-              2. 再看“职业建议”，把关键词写成你能接受的工作环境条件。
-            </div>
-            <div>3. 最后看“人际关系”，挑 1 条本周就能做的微动作。</div>
+          <div className="flex flex-col gap-2 lg:items-end">
+            <button className="mbti-button-primary" onClick={copy}>
+              {copied ? '✓ 已复制' : '📋 复制分享'}
+            </button>
+            <button className="mbti-button-ghost" onClick={restart}>
+              🔄 重新测试
+            </button>
           </div>
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Section title="优势">
+      {/* 四维度分析 */}
+      <div className="mb-6">
+        <h2 className="text-lg font-black text-slate-950 mb-4 flex items-center gap-2">
+          📊 四维度偏好分析
+        </h2>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <DimensionBar
+            left="E" right="I"
+            leftPercent={percentages.E}
+            leftLabel="外向" rightLabel="内向"
+            leftDesc="你倾向于从外部世界获取能量，喜欢社交互动，在人群中感到充实。"
+            rightDesc="你倾向于从内心世界获取能量，享受独处时光，深度思考让你充电。"
+          />
+          <DimensionBar
+            left="S" right="N"
+            leftPercent={percentages.S}
+            leftLabel="感觉" rightLabel="直觉"
+            leftDesc="你更关注具体事实和细节，相信实际经验，脚踏实地。"
+            rightDesc="你更关注可能性和整体图景，喜欢抽象思考，富有想象力。"
+          />
+          <DimensionBar
+            left="T" right="F"
+            leftPercent={percentages.T}
+            leftLabel="思考" rightLabel="情感"
+            leftDesc="你做决定时更看重逻辑和客观分析，追求公平和效率。"
+            rightDesc="你做决定时更考虑人的感受和价值观，追求和谐与认同。"
+          />
+          <DimensionBar
+            left="J" right="P"
+            leftPercent={percentages.J}
+            leftLabel="判断" rightLabel="知觉"
+            leftDesc="你喜欢有计划、有条理的生活，做事有始有终，追求确定性。"
+            rightDesc="你喜欢灵活开放的生活方式，随机应变，享受过程中的可能性。"
+          />
+        </div>
+      </div>
+
+      {/* 核心特质 */}
+      <div className="grid gap-4 lg:grid-cols-2 mb-6">
+        <Section title="核心优势" icon="💪">
           <div className="flex flex-wrap gap-2">
             {personality.strengths.map((s) => (
-              <span
-                key={s}
-                className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-700"
-              >
+              <span key={s} className="inline-flex items-center rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
                 {s}
               </span>
             ))}
           </div>
+          {personality.strengthDetails && (
+            <p className="mt-4 text-sm text-slate-600 leading-relaxed">{personality.strengthDetails}</p>
+          )}
         </Section>
 
-        <Section title="需要注意">
+        <Section title="成长空间" icon="🌱">
           <div className="flex flex-wrap gap-2">
             {personality.weaknesses.map((w) => (
-              <span
-                key={w}
-                className="inline-flex items-center rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-sm font-semibold text-orange-700"
-              >
+              <span key={w} className="inline-flex items-center rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700">
                 {w}
               </span>
             ))}
           </div>
+          {personality.weaknessDetails && (
+            <p className="mt-4 text-sm text-slate-600 leading-relaxed">{personality.weaknessDetails}</p>
+          )}
         </Section>
       </div>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-3">
+      {/* 职业与环境 */}
+      <div className="grid gap-4 lg:grid-cols-3 mb-6">
         <div className="lg:col-span-2">
-          <Section title="适合的职业">
-            <div className="flex flex-wrap gap-2">
+          <Section title="适合的职业方向" icon="💼">
+            <div className="flex flex-wrap gap-2 mb-4">
               {personality.careers.map((c) => (
-                <span
-                  key={c}
-                  className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-sm font-semibold text-sky-700"
-                >
+                <span key={c} className="inline-flex items-center rounded-xl border border-sky-200 bg-sky-50 px-4 py-2 text-sm font-semibold text-sky-700">
                   {c}
                 </span>
               ))}
             </div>
+            {personality.careerAdvice && (
+              <p className="text-sm text-slate-600 leading-relaxed">{personality.careerAdvice}</p>
+            )}
           </Section>
         </div>
-        <Section title="同类型名人">
+        
+        <Section title="同类型名人" icon="⭐">
           <div className="flex flex-wrap gap-2">
             {personality.famousPeople.map((p) => (
-              <span
-                key={p}
-                className="inline-flex items-center rounded-full border border-slate-200 bg-white/60 px-3 py-1 text-sm font-semibold text-slate-700"
-              >
+              <span key={p} className="inline-flex items-center rounded-xl border border-slate-200 bg-white/60 px-3 py-1.5 text-sm font-medium text-slate-700">
                 {p}
               </span>
             ))}
@@ -171,12 +283,54 @@ export default function Result() {
         </Section>
       </div>
 
-      <div className="mt-4">
-        <Section title="人际关系">
+      {/* 人际关系 */}
+      <div className="grid gap-4 lg:grid-cols-2 mb-6">
+        <Section title="人际关系" icon="💬">
           <p className="text-sm leading-relaxed text-slate-600">{personality.relationships}</p>
+          {personality.communicationTips && (
+            <div className="mt-4 p-4 rounded-xl bg-slate-50 border border-slate-100">
+              <div className="text-xs font-semibold text-slate-500 mb-2">沟通建议</div>
+              <p className="text-sm text-slate-600 leading-relaxed">{personality.communicationTips}</p>
+            </div>
+          )}
         </Section>
+
+        <Section title="最佳搭档类型" icon="🤝">
+          {personality.compatibleTypes ? (
+            <div className="space-y-3">
+              {personality.compatibleTypes.map((ct) => (
+                <div key={ct.type} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
+                  <span className="text-lg font-black text-slate-950">{ct.type}</span>
+                  <span className="text-sm text-slate-600">{ct.reason}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-slate-500">暂无数据</p>
+          )}
+        </Section>
+      </div>
+
+      {/* 行动建议 */}
+      {personality.actionTips && (
+        <Section title="本周可执行的小行动" icon="🎯">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {personality.actionTips.map((tip, i) => (
+              <div key={i} className="p-4 rounded-xl bg-gradient-to-br from-slate-50 to-white border border-slate-100">
+                <div className="text-xs font-semibold text-slate-400 mb-1">行动 {i + 1}</div>
+                <p className="text-sm text-slate-700">{tip}</p>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {/* 底部提示 */}
+      <div className="mt-8 text-center">
+        <p className="text-xs text-slate-400">
+          MBTI 是一种性格偏好工具，帮助你更好地了解自己，而非定义你。人是复杂的，类型只是起点。
+        </p>
       </div>
     </div>
   )
 }
-

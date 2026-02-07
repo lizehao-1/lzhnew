@@ -104,11 +104,14 @@ export default function Test() {
 
       <div className="mbti-card p-7 sm:p-9">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
+          <div className="flex-1">
             <div className="text-xs font-semibold text-slate-500">请选一个最符合的</div>
             <h2 className="mt-2 text-xl font-black tracking-tight text-slate-950 sm:text-2xl">
               {currentQuestion.text}
             </h2>
+            <p className="mt-3 text-sm text-slate-500 leading-relaxed bg-slate-50 rounded-xl px-4 py-3 border border-slate-100">
+              💡 {currentQuestion.example}
+            </p>
           </div>
         </div>
 
