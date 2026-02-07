@@ -63,22 +63,25 @@ export async function onRequest(context) {
       const phone = parts[1]
       if (/^1[3-9]\d{9}$/.test(phone)) {
         // 判断是充值还是普通支付
+        const isRecharge = paramValue.startsWith('RECHARGE_')
         let creditsToAdd = 3  // 默认3积分
-        if (paramValue.startsWith('RECHARGE_')) {
+        if (isRecharge) {
           const rechargeCredits = parseInt(paramValue.replace('RECHARGE_', ''), 10)
           if (rechargeCredits > 0) {
             creditsToAdd = rechargeCredits
           }
         }
-        // 增加用户积分
-        await addCredits(env, phone, creditsToAdd)
-        console.log('Credits added for phone:', phone, 'amount:', creditsToAdd)
+        
+        // 增加用户积分，如果是普通支付则同时扣1积分并标记最新记录为已查看
+        await addCreditsAndUseOne(env, phone, creditsToAdd, !isRecharge)
+        console.log('Credits added for phone:', phone, 'amount:', creditsToAdd, 'isRecharge:', isRecharge)
         
         // 标记订单已处理（防止重复回调）
         await env.MBTI_USERS?.put(orderKey, JSON.stringify({ 
           processed: true, 
           phone,
           credits: creditsToAdd,
+          isRecharge,
           time: Date.now() 
         }))
       }
@@ -93,12 +96,12 @@ export async function onRequest(context) {
   }
 }
 
-// 增加用户积分
-async function addCredits(env, phone, amount = 3) {
+// 增加用户积分，如果是普通支付则同时扣1积分并标记最新记录为已查看
+async function addCreditsAndUseOne(env, phone, amount = 3, useOneCredit = false) {
   try {
     const data = await env.MBTI_USERS?.get(phone)
     if (!data) {
-      // 用户不存在，创建新用户
+      // 用户不存在，创建新用户（充值场景，不应该发生在普通支付）
       const userData = { phone, credits: amount, records: [] }
       await env.MBTI_USERS?.put(phone, JSON.stringify(userData))
       return
@@ -108,7 +111,21 @@ async function addCredits(env, phone, amount = 3) {
     if (typeof userData.credits !== 'number') {
       userData.credits = 0
     }
+    
+    // 增加积分
     userData.credits += amount
+    
+    // 如果是普通支付（非充值），扣1积分并标记最新记录为已查看
+    if (useOneCredit && userData.records && userData.records.length > 0) {
+      // 找到最新的未查看记录
+      const latestRecord = userData.records[userData.records.length - 1]
+      if (latestRecord && !latestRecord.viewed) {
+        userData.credits -= 1  // 扣1积分
+        latestRecord.viewed = true  // 标记为已查看
+        console.log('Auto used 1 credit for latest record, remaining:', userData.credits)
+      }
+    }
+    
     await env.MBTI_USERS?.put(phone, JSON.stringify(userData))
   } catch (err) {
     console.error('Add credits error:', err.message)

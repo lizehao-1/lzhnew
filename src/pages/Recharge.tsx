@@ -109,11 +109,13 @@ export default function Recharge() {
         const resp = await fetch(`/api/zy/query-order?outTradeNo=${encodeURIComponent(payData.outTradeNo)}`)
         const data = await resp.json()
         if (data.paid) {
-          // 支付成功，等待2秒让回调执行完再刷新积分
-          await new Promise(r => setTimeout(r, 2000))
+          // 支付成功，等待1秒让回调执行完再刷新积分
+          await new Promise(r => setTimeout(r, 1000))
           if (phone && pin) {
             await fetchCredits(phone, pin)
           }
+          // 触发全局积分刷新事件
+          window.dispatchEvent(new Event('mbti-login-change'))
           alert(`充值成功！获得 ${selectedPkg.credits} 次查看机会`)
           navigate('/')
         }

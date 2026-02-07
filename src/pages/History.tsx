@@ -40,8 +40,13 @@ export default function History() {
         fetchData(savedPhone, savedPin)
       }
     }
+    // 监听窗口焦点和全局登录状态变化
     window.addEventListener('focus', handleFocus)
-    return () => window.removeEventListener('focus', handleFocus)
+    window.addEventListener('mbti-login-change', handleFocus)
+    return () => {
+      window.removeEventListener('focus', handleFocus)
+      window.removeEventListener('mbti-login-change', handleFocus)
+    }
   }, [])
 
   const fetchData = async (phone: string, pin: string) => {
