@@ -23,7 +23,7 @@ export async function onRequestGet(context) {
     }
     
     // 从 KV 获取数据
-    const data = await env.MBTI_USERS?.get(phone)
+    const data = await env.MBTI_USERS?.get(phone, { cacheTtl: 0 })
     
     if (!data) {
       return noCacheResponse({ found: false, records: [], credits: 0 })

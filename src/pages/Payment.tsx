@@ -199,6 +199,8 @@ export default function Payment() {
       if (data.paid) {
         // 订单已支付，后端已自动补偿积分
         localStorage.removeItem('mbti_pending_order')
+        localStorage.setItem('mbti_last_paid_order', payData.outTradeNo)
+        localStorage.setItem('mbti_last_paid_at', String(Date.now()))
         localStorage.setItem('mbti_paid', 'true')
         await syncCreditsAfterPayment()
         window.dispatchEvent(new Event('mbti-login-change'))

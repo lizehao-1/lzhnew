@@ -52,6 +52,7 @@ export default function History() {
   const fetchData = async (phone: string, pin: string) => {
     setLoading(true)
     try {
+      await maybeSyncPayment(phone)
       const resp = await fetch(`/api/user/query?phone=${encodeURIComponent(phone)}&pin=${encodeURIComponent(pin)}&t=${Date.now()}`)
       const data = await resp.json()
       if (resp.status === 401 || data.needPin) {
@@ -99,6 +100,7 @@ export default function History() {
     setNotFound(false)
 
     try {
+      await maybeSyncPayment(phone)
       const resp = await fetch(`/api/user/query?phone=${encodeURIComponent(phone)}&pin=${encodeURIComponent(pin)}&t=${Date.now()}`)
       const data = await resp.json()
       
@@ -301,4 +303,23 @@ export default function History() {
       </div>
     </div>
   )
+}
+
+function maybeSyncPayment(phone: string) {
+  const order = localStorage.getItem('mbti_last_paid_order')
+  const at = Number(localStorage.getItem('mbti_last_paid_at') || '0')
+  if (!order || !at) return Promise.resolve(false)
+  if (Date.now() - at > 30 * 60 * 1000) {
+    localStorage.removeItem('mbti_last_paid_order')
+    localStorage.removeItem('mbti_last_paid_at')
+    return Promise.resolve(false)
+  }
+  if (!phone) return Promise.resolve(false)
+  return fetch(`/api/zy/query-order?outTradeNo=${encodeURIComponent(order)}`)
+    .then(r => r.json())
+    .then(data => {
+      if (data?.paid) return true
+      return false
+    })
+    .catch(() => false)
 }
