@@ -1,4 +1,4 @@
-@tailwind base;
+﻿@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
@@ -21,7 +21,7 @@
   }
 
   body {
-    font-family: "Manrope", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+    font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", "Heiti SC", "Source Han Sans SC", "WenQuanYi Micro Hei", "Segoe UI", sans-serif;
     color: var(--ink);
     background:
       radial-gradient(1100px 600px at 10% 0%, rgba(59, 130, 246, 0.12), transparent 55%),
@@ -40,7 +40,7 @@
 
 @layer components {
   .font-display {
-    font-family: "Fraunces", "Manrope", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+    font-family: "Noto Serif SC", "Source Han Serif SC", "STSong", "Songti SC", serif;
     letter-spacing: -0.02em;
   }
 
@@ -130,7 +130,6 @@ body {
   animation: float-slow 8s ease-in-out infinite;
 }
 
-/* Toast animation */
 @keyframes fade-in {
   from {
     opacity: 0;
