@@ -93,6 +93,47 @@ export default function Result() {
     if (p) setPersonality(p)
   }, [navigate])
 
+  useEffect(() => {
+    const pendingRaw = localStorage.getItem('mbti_pending_use_credit')
+    if (!pendingRaw) return
+    let cancelled = false
+    let attempts = 0
+
+    const tryConsume = async () => {
+      if (cancelled) return
+      attempts += 1
+      try {
+        const pending = JSON.parse(pendingRaw)
+        if (!pending?.phone || !pending?.timestamp) {
+          localStorage.removeItem('mbti_pending_use_credit')
+          return
+        }
+        const resp = await fetch('/api/user/use-credit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone: pending.phone, timestamp: pending.timestamp })
+        })
+        const data = await resp.json()
+        if (data.success) {
+          localStorage.removeItem('mbti_pending_use_credit')
+          return
+        }
+      } catch {
+        // ignore and retry
+      }
+      if (attempts >= 15) {
+        localStorage.removeItem('mbti_pending_use_credit')
+        return
+      }
+      setTimeout(tryConsume, 2000)
+    }
+
+    tryConsume()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   // 直接根据结果类型计算百分比，不依赖答案
   const percentages = useMemo(() => {
     if (!personality) return { E: 50, I: 50, S: 50, N: 50, T: 50, F: 50, J: 50, P: 50 }

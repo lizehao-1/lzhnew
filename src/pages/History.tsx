@@ -156,6 +156,17 @@ export default function History() {
     }
 
     if (credits <= 0) {
+      // If we have a recent payment override, allow immediate view and queue a background credit consume
+      if (hasActiveCreditOverride()) {
+        localStorage.setItem('mbti_result', record.result)
+        localStorage.setItem('mbti_paid', 'true')
+        localStorage.setItem('mbti_pending_use_credit', JSON.stringify({ phone, timestamp: record.timestamp, at: Date.now() }))
+        setRecords(prev => prev?.map(r =>
+          r.timestamp === record.timestamp ? { ...r, viewed: true } : r
+        ) || null)
+        navigate('/result')
+        return
+      }
       alert('积分不足，请先支付后查看完整报告')
       return
     }
@@ -178,6 +189,16 @@ export default function History() {
         localStorage.setItem('mbti_paid', 'true')
         navigate('/result')
       } else if (data.needPayment) {
+        if (hasActiveCreditOverride()) {
+          localStorage.setItem('mbti_result', record.result)
+          localStorage.setItem('mbti_paid', 'true')
+          localStorage.setItem('mbti_pending_use_credit', JSON.stringify({ phone, timestamp: record.timestamp, at: Date.now() }))
+          setRecords(prev => prev?.map(r =>
+            r.timestamp === record.timestamp ? { ...r, viewed: true } : r
+          ) || null)
+          navigate('/result')
+          return
+        }
         alert('积分不足，请先支付后查看完整报告')
         setCredits(0)
       }
@@ -347,4 +368,11 @@ function applyCreditOverride(serverCredits: number) {
     return serverCredits
   }
   return next
+}
+
+function hasActiveCreditOverride() {
+  const at = Number(localStorage.getItem('mbti_credits_override_at') || '0')
+  const delta = Number(localStorage.getItem('mbti_credits_delta') || 'NaN')
+  if (!at || !Number.isFinite(delta)) return false
+  return Date.now() - at <= 60 * 1000
 }
