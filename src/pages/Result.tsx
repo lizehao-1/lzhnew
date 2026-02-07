@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { personalities, Personality } from '../data/personalities'
 
@@ -124,7 +124,7 @@ export default function Result() {
   if (!personality) return null
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
+    <div className="mx-auto max-w-6xl px-4 py-10 page-enter">
       {/* 顶部主卡片 */}
       <div className="mbti-card p-6 sm:p-8 mb-6">
         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
@@ -134,11 +134,11 @@ export default function Result() {
             </div>
             
             <div className="flex items-end gap-4 mb-4">
-              <div className="text-6xl sm:text-7xl font-black tracking-tighter text-slate-950">
+              <div className="text-6xl sm:text-7xl font-black tracking-tighter text-slate-950 font-display">
                 {personality.type}
               </div>
               <div className="pb-2">
-                <div className="text-2xl font-black text-slate-950">{personality.name}</div>
+                <div className="text-2xl font-black text-slate-950 font-display">{personality.name}</div>
                 <div className="text-base text-slate-600">{personality.nickname}</div>
               </div>
             </div>

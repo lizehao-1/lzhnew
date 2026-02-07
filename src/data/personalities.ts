@@ -1,4 +1,4 @@
-﻿export interface Personality {
+export interface Personality {
   type: string
   name: string
   nickname: string
