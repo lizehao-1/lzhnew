@@ -235,29 +235,38 @@ export default function Payment() {
         const resp = await fetch(`/api/zy/query-order?outTradeNo=${encodeURIComponent(payData.outTradeNo)}`)
         const data = await resp.json()
         if (data.paid) {
-          // 清除待处理订单
-          localStorage.removeItem('mbti_pending_order')
-          
-          // 支付成功后，回调会自动增加积分
-          // 这里使用积分查看当前记录
-          const usePhone = phone || localStorage.getItem('mbti_phone')
+          // 支付成功，但回调可能还没执行完
+          // 轮询等待积分到账
+          const usePhone = phone || localStorage.getItem('mbti_phone') || ''
+          const usePin = pin || localStorage.getItem('mbti_pin') || ''
           const useTimestamp = recordTimestamp || payData.recordTimestamp
+          
           if (usePhone && useTimestamp) {
-            await fetch('/api/user/use-credit', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ phone: usePhone, timestamp: useTimestamp })
-            })
+            // 查询积分是否到账
+            const queryResp = await fetch(`/api/user/query?phone=${encodeURIComponent(usePhone)}&pin=${encodeURIComponent(usePin)}&t=${Date.now()}`)
+            const queryData = await queryResp.json()
+            
+            if (queryData.credits > 0) {
+              // 积分到账了，使用积分
+              await fetch('/api/user/use-credit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone: usePhone, timestamp: useTimestamp })
+              })
+              
+              // 清除待处理订单
+              localStorage.removeItem('mbti_pending_order')
+              localStorage.setItem('mbti_paid', 'true')
+              window.dispatchEvent(new Event('mbti-login-change'))
+              navigate('/result')
+            }
+            // 积分还没到账，继续轮询
           }
-          localStorage.setItem('mbti_paid', 'true')
-          // 触发登录状态刷新，让 UserMenu 更新积分
-          window.dispatchEvent(new Event('mbti-login-change'))
-          navigate('/result')
         }
       } catch { /* ignore */ }
     }, 2000)
     return () => clearInterval(timer)
-  }, [payData, navigate, phone, recordTimestamp])
+  }, [payData, navigate, phone, pin, recordTimestamp])
 
   const openPayment = () => {
     if (!payData) return
