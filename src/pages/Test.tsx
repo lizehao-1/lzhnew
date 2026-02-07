@@ -2,16 +2,9 @@ import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Question } from '../data/questions'
 import { QuestionSetId, questionSets, loadQuestions } from '../data/question-sets'
+import { useI18n } from '../i18n'
 
 type Answers = Record<number, number>
-
-const options = [
-  { value: 5, label: '非常同意' },
-  { value: 4, label: '比较同意' },
-  { value: 3, label: '中立' },
-  { value: 2, label: '比较不同意' },
-  { value: 1, label: '非常不同意' },
-] as const
 
 function calculateResult(answers: Answers, questions: Question[]): string {
   const scores = { E: 0, I: 0, S: 0, N: 0, T: 0, F: 0, J: 0, P: 0 }
@@ -43,13 +36,13 @@ function calculateResult(answers: Answers, questions: Question[]): string {
   )
 }
 
-// 选择题库版本
 function SetSelector({ onSelect }: { onSelect: (id: QuestionSetId) => void }) {
+  const { t } = useI18n()
   return (
     <div className="mx-auto max-w-2xl px-4 py-10 page-enter">
       <div className="text-center mb-8">
-        <h1 className="text-2xl font-black text-slate-950">选择测试版本</h1>
-        <p className="mt-2 text-sm text-slate-500">题目越多结果越准确，但需要更多时间</p>
+        <h1 className="text-2xl sm:text-3xl font-black text-slate-950 font-display">{t('test_select_title')}</h1>
+        <p className="mt-2 text-sm text-slate-500">{t('test_select_sub')}</p>
       </div>
       <div className="grid gap-3">
         {questionSets.map((set) => (
@@ -62,14 +55,14 @@ function SetSelector({ onSelect }: { onSelect: (id: QuestionSetId) => void }) {
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-lg font-black text-slate-950">{set.name}</span>
-                  <span className="text-xs text-slate-400">{set.count}题 · {set.time}</span>
+                  <span className="text-xs text-slate-400">{set.count} {t('test_question_unit')} �� {set.time}</span>
                   {set.id === '48' && (
-                    <span className="text-xs bg-sky-100 text-sky-700 px-2 py-0.5 rounded-full">推荐</span>
+                    <span className="text-xs bg-sky-100 text-sky-700 px-2 py-0.5 rounded-full">{t('test_recommended')}</span>
                   )}
                 </div>
                 <p className="mt-1 text-sm text-slate-500">{set.desc}</p>
               </div>
-              <span className="text-slate-300 group-hover:text-slate-500 transition-colors">→</span>
+              <span className="text-slate-300 group-hover:text-slate-500 transition-colors">��</span>
             </div>
           </button>
         ))}
@@ -80,6 +73,7 @@ function SetSelector({ onSelect }: { onSelect: (id: QuestionSetId) => void }) {
 
 export default function Test() {
   const navigate = useNavigate()
+  const { t } = useI18n()
   const [selectedSet, setSelectedSet] = useState<QuestionSetId | null>(null)
   const [questions, setQuestions] = useState<Question[]>([])
   const [loading, setLoading] = useState(false)
@@ -88,7 +82,14 @@ export default function Test() {
   const [isTransitioning, setIsTransitioning] = useState(false)
   const answersRef = useRef<Answers>({})
 
-  // 加载题库
+  const options = [
+    { value: 5, label: t('opt_strong_agree') },
+    { value: 4, label: t('opt_agree') },
+    { value: 3, label: t('opt_neutral') },
+    { value: 2, label: t('opt_disagree') },
+    { value: 1, label: t('opt_strong_disagree') },
+  ] as const
+
   useEffect(() => {
     if (!selectedSet) return
     setLoading(true)
@@ -127,18 +128,16 @@ export default function Test() {
     setCurrentIndex((i) => Math.max(0, i - 1))
   }
 
-  // 未选择版本时显示选择器
   if (!selectedSet) {
     return <SetSelector onSelect={setSelectedSet} />
   }
 
-  // 加载中
   if (loading || !currentQuestion) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-slate-800 mx-auto" />
-          <p className="mt-3 text-sm text-slate-500">加载题目中...</p>
+          <p className="mt-3 text-sm text-slate-500">{t('test_loading')}</p>
         </div>
       </div>
     )
@@ -146,10 +145,9 @@ export default function Test() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 pb-10 pt-4 page-enter">
-      {/* 进度条 */}
       <div className="mb-5 rounded-xl border border-slate-200 bg-white/70 backdrop-blur px-4 py-3">
         <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
-          <span>第 {currentIndex + 1} / {questions.length} 题</span>
+          <span>{t('test_progress', { current: currentIndex + 1, total: questions.length })}</span>
           <span>{Math.round(progress)}%</span>
         </div>
         <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
@@ -160,13 +158,11 @@ export default function Test() {
         </div>
       </div>
 
-      {/* 题目卡片 */}
       <div className="mbti-card p-5 sm:p-6">
         <h2 className="text-lg font-bold text-slate-900 leading-relaxed">
           {currentQuestion.text}
         </h2>
 
-        {/* 选项 */}
         <div className="mt-5 grid gap-2">
           {options.map((option) => {
             const selected = answers[currentQuestion.id] === option.value
@@ -193,27 +189,25 @@ export default function Test() {
           })}
         </div>
 
-        {/* 生活化提示 - 固定高度 */}
         <div className="mt-4 min-h-[60px] flex items-start">
           <p className="text-xs text-slate-400 leading-relaxed">
-            💡 {currentQuestion.example}
+            {t('test_example')} {currentQuestion.example}
           </p>
         </div>
 
-        {/* 底部操作 */}
         <div className="mt-4 flex items-center justify-between pt-4 border-t border-slate-100">
           <button
             onClick={goBack}
             className="text-sm text-slate-500 hover:text-slate-700 disabled:opacity-30"
             disabled={currentIndex === 0 || isTransitioning}
           >
-            ← 上一题
+            {t('test_prev')}
           </button>
           <button
             className="text-xs text-slate-400 hover:text-slate-600"
             onClick={() => navigate('/')}
           >
-            退出
+            {t('test_exit')}
           </button>
         </div>
       </div>

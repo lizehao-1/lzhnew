@@ -1,12 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import QRCode from 'qrcode'
-
-const PACKAGES = [
-  { id: 1, credits: 3, price: '1', desc: '单次购买', popular: false },
-  { id: 2, credits: 10, price: '3', desc: '多次使用', popular: true },
-  { id: 3, credits: 30, price: '8', desc: '长期使用', popular: false },
-]
+import { useI18n } from '../i18n'
 
 type PayData = {
   outTradeNo: string
@@ -18,26 +13,31 @@ type PayData = {
 
 export default function Recharge() {
   const navigate = useNavigate()
+  const { t } = useI18n()
   const [phone, setPhone] = useState('')
   const [pin, setPin] = useState('')
   const [currentCredits, setCurrentCredits] = useState<number | null>(null)
-  const [selectedPkg, setSelectedPkg] = useState(PACKAGES[1])
+  const [selectedPkg, setSelectedPkg] = useState({ id: 2, credits: 10, price: '3', desc: t('pkg_multi'), popular: true })
   const [step, setStep] = useState<'select' | 'pay' | 'checking'>('select')
   const [payData, setPayData] = useState<PayData | null>(null)
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [, setPollCount] = useState(0)
-  const MAX_POLLS = 150 // 最多轮询150次（5分钟）
+  const MAX_POLLS = 150
 
-  // 从 localStorage 获取登录信息
+  const packages = [
+    { id: 1, credits: 3, price: '1', desc: t('pkg_single'), popular: false },
+    { id: 2, credits: 10, price: '3', desc: t('pkg_multi'), popular: true },
+    { id: 3, credits: 30, price: '8', desc: t('pkg_long'), popular: false },
+  ]
+
   useEffect(() => {
     const savedPhone = localStorage.getItem('mbti_phone')
     const savedPin = localStorage.getItem('mbti_pin')
     if (savedPhone && savedPin) {
       setPhone(savedPhone)
       setPin(savedPin)
-      // 获取当前积分
       fetchCredits(savedPhone, savedPin)
     }
   }, [])
@@ -74,31 +74,31 @@ export default function Recharge() {
         setCurrentCredits(creditsValue)
       }
     } catch {
-      // 静默失败
+      // ignore
     }
   }
 
   const createOrder = async () => {
     if (!phone) {
-      setError('请先登录')
+      setError(t('err_login_first'))
       return
     }
     setError(null)
     setLoading(true)
-    
+
     try {
       const resp = await fetch('/api/zy/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           mbtiResult: `RECHARGE_${selectedPkg.credits}`,
           phone,
-          type: 'alipay', 
+          type: 'alipay',
           method: 'web'
         }),
       })
       const data = await resp.json()
-      if (!resp.ok) throw new Error(data.error || '创建订单失败')
+      if (!resp.ok) throw new Error(data.error || t('err_order_failed'))
       setPayData(data)
       setStep('pay')
 
@@ -109,49 +109,42 @@ export default function Recharge() {
         setQrDataUrl(null)
       }
     } catch (err: any) {
-      setError(err.message || '创建订单失败')
+      setError(err.message || t('err_order_failed'))
     } finally {
       setLoading(false)
     }
   }
 
-  // 轮询支付状态
   useEffect(() => {
     if (!payData) return
     const timer = setInterval(async () => {
-      // 超时检查
       setPollCount(prev => {
         if (prev >= MAX_POLLS) {
-          setError('支付超时，请刷新页面重试或联系客服')
+          setError(t('recharge_timeout'))
           setStep('select')
           return prev
         }
         return prev + 1
       })
-      
+
       try {
         const resp = await fetch(`/api/zy/query-order?outTradeNo=${encodeURIComponent(payData.outTradeNo)}`)
         const data = await resp.json()
         if (data.paid) {
-          // 支付成功，等待1秒让回调执行完再刷新积分
           await new Promise(r => setTimeout(r, 1000))
-          localStorage.removeItem('mbti_credits_delta')
-          localStorage.removeItem('mbti_credits_override_at')
           if (phone && pin) {
             await fetchCredits(phone, pin)
           }
-          // 触发全局积分刷新事件
           window.dispatchEvent(new Event('mbti-login-change'))
-          // 使用 toast 风格提示，不阻塞
           setStep('select')
           setPayData(null)
           setPollCount(0)
-          navigate('/', { state: { message: `充值成功！获得 ${selectedPkg.credits} 次查看机会` } })
+          navigate('/', { state: { message: t('recharge_success', { credits: selectedPkg.credits }) } })
         }
       } catch { /* ignore */ }
     }, 2000)
     return () => clearInterval(timer)
-  }, [payData, navigate, phone, pin, selectedPkg.credits])
+  }, [payData, navigate, phone, pin, selectedPkg.credits, t])
 
   const openPayment = () => {
     if (!payData) return
@@ -166,39 +159,16 @@ export default function Recharge() {
     }
   }
 
-  // 测试用：模拟充值
-  const fakeRecharge = async () => {
-    if (!phone) {
-      alert('请先登录')
-      return
-    }
-    try {
-      const resp = await fetch('/api/admin/add-credits', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, credits: selectedPkg.credits, adminKey: 'mbti-admin-2026' })
-      })
-      const data = await resp.json()
-      if (data.success) {
-        setCurrentCredits(data.totalCredits)
-        alert(`充值成功！获得 ${selectedPkg.credits} 次查看机会`)
-      }
-    } catch {
-      alert('操作失败')
-    }
-  }
-
   return (
     <div className="mx-auto max-w-xl px-4 py-10 page-enter">
       <div className="mbti-card p-6">
-        <h1 className="text-2xl sm:text-3xl font-black text-slate-950 text-center mb-2 font-display">积分充值</h1>
-        <p className="text-xs text-slate-500 text-center mb-6">购买查看次数，解锁完整人格报告</p>
+        <h1 className="text-2xl sm:text-3xl font-black text-slate-950 text-center mb-2 font-display">{t('recharge_title')}</h1>
+        <p className="text-xs text-slate-500 text-center mb-6">{t('recharge_sub')}</p>
 
-        {/* 当前积分 */}
         {phone && (
           <div className="flex items-center justify-between p-3 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 mb-6">
             <div>
-              <span className="text-sm text-amber-800">当前剩余</span>
+              <span className="text-sm text-amber-800">{t('recharge_current')}</span>
               <span className="text-xs text-slate-500 ml-2">
                 {phone.slice(0, 3)}****{phone.slice(-4)}
               </span>
@@ -209,21 +179,20 @@ export default function Recharge() {
 
         {!phone && (
           <div className="text-center py-4 mb-6 rounded-xl bg-slate-50 border border-slate-200">
-            <p className="text-sm text-slate-600">请先登录后再充值</p>
-            <button 
+            <p className="text-sm text-slate-600">{t('recharge_login_tip')}</p>
+            <button
               onClick={() => navigate('/')}
               className="mt-2 text-xs text-sky-600 hover:text-sky-700"
             >
-              返回首页登录 →
+              {t('recharge_back_login')}
             </button>
           </div>
         )}
 
-        {/* 选择套餐 */}
         {step === 'select' && phone && (
           <div>
             <div className="space-y-3 mb-6">
-              {PACKAGES.map((pkg) => (
+              {packages.map((pkg) => (
                 <button
                   key={pkg.id}
                   onClick={() => setSelectedPkg(pkg)}
@@ -237,14 +206,14 @@ export default function Recharge() {
                     <div className="flex items-center gap-3">
                       <span className="text-2xl font-black text-slate-950">{pkg.credits}</span>
                       <div>
-                        <div className="text-sm font-medium text-slate-700">次查看机会</div>
+                        <div className="text-sm font-medium text-slate-700">{t('views_label')}</div>
                         <div className="text-xs text-slate-400">{pkg.desc}</div>
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-xl font-black text-slate-950">¥{pkg.price}</div>
+                      <div className="text-xl font-black text-slate-950">��{pkg.price}</div>
                       {pkg.popular && (
-                        <span className="text-xs bg-sky-100 text-sky-700 px-2 py-0.5 rounded-full">推荐</span>
+                        <span className="text-xs bg-sky-100 text-sky-700 px-2 py-0.5 rounded-full">{t('recommended')}</span>
                       )}
                     </div>
                   </div>
@@ -252,73 +221,60 @@ export default function Recharge() {
               ))}
             </div>
 
-            <button 
-              className="w-full mbti-button-primary" 
+            <button
+              className="w-full mbti-button-primary"
               onClick={createOrder}
               disabled={loading}
             >
-              {loading ? '创建订单中...' : `支付 ¥${selectedPkg.price}`}
+              {loading ? t('creating_order') : `${t('recharge_pay')} ��${selectedPkg.price}`}
             </button>
-            
-            {/* 测试用 - 仅开发环境显示 */}
-            {import.meta.env.DEV && (
-              <button 
-                className="w-full mt-2 text-xs text-orange-500 hover:text-orange-600 py-2" 
-                onClick={fakeRecharge}
-              >
-                🔧 [测试] 模拟充值
-              </button>
-            )}
-            
+
             {error && <p className="mt-3 text-xs text-red-500 text-center">{error}</p>}
           </div>
         )}
 
-        {/* 支付中 */}
         {step === 'pay' && payData && (
           <div>
             {qrDataUrl ? (
               <div className="text-center">
-                <p className="text-sm text-slate-600 mb-3">扫码支付</p>
-                <img src={qrDataUrl} alt="支付二维码" className="mx-auto rounded-xl" />
-                <p className="mt-3 text-lg font-bold text-slate-950">¥{selectedPkg.price}</p>
-                <p className="text-xs text-slate-500 mt-1">充值 {selectedPkg.credits} 次查看机会</p>
+                <p className="text-sm text-slate-600 mb-3">{t('scan_pay')}</p>
+                <img src={qrDataUrl} alt="QR" className="mx-auto rounded-xl" />
+                <p className="mt-3 text-lg font-bold text-slate-950">��{selectedPkg.price}</p>
+                <p className="text-xs text-slate-500 mt-1">{t('recharge_view_times', { credits: selectedPkg.credits })}</p>
               </div>
             ) : (
               <div className="text-center">
-                <p className="text-sm text-slate-600 mb-4">点击下方按钮打开支付</p>
-                <button className="mbti-button-primary" onClick={openPayment}>打开支付</button>
+                <p className="text-sm text-slate-600 mb-4">{t('click_to_pay')}</p>
+                <button className="mbti-button-primary" onClick={openPayment}>{t('recharge_open')}</button>
               </div>
             )}
             <button className="w-full mt-4 mbti-button-ghost" onClick={() => setStep('checking')}>
-              我已支付
+              {t('recharge_paid')}
             </button>
-            <p className="mt-3 text-xs text-slate-400 text-center">订单号: {payData.outTradeNo}</p>
+            <p className="mt-3 text-xs text-slate-400 text-center">{t('order_no')} {payData.outTradeNo}</p>
           </div>
         )}
 
-        {/* 确认中 */}
         {step === 'checking' && (
           <div className="text-center py-6">
             <div className="h-10 w-10 animate-spin rounded-full border-2 border-slate-200 border-t-slate-800 mx-auto" />
-            <p className="mt-4 text-sm text-slate-600">正在确认支付...</p>
-            <p className="mt-1 text-xs text-slate-400">确认后自动跳转</p>
-            <button 
+            <p className="mt-4 text-sm text-slate-600">{t('recharge_wait')}</p>
+            <p className="mt-1 text-xs text-slate-400">{t('recharge_auto')}</p>
+            <button
               className="mt-4 text-xs text-slate-400 hover:text-slate-600 underline"
               onClick={() => {
                 setStep('pay')
                 setPollCount(0)
               }}
             >
-              取消等待，重新支付
+              {t('recharge_cancel_wait')}
             </button>
           </div>
         )}
 
-        {/* 底部链接 */}
         <div className="mt-6 pt-4 border-t border-slate-100 text-center">
           <button onClick={() => navigate('/')} className="text-xs text-slate-400 hover:text-slate-600">
-            返回首页
+            {t('back_home')}
           </button>
         </div>
       </div>

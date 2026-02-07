@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useI18n } from '../i18n'
 
 export default function UserMenu() {
   const navigate = useNavigate()
+  const { t } = useI18n()
   const [phone, setPhone] = useState<string | null>(null)
   const [showLogin, setShowLogin] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
@@ -12,13 +14,11 @@ export default function UserMenu() {
   const [loading, setLoading] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
-  // ä» localStorage æ¢å¤ç™»å½•çŠ¶æ€
   useEffect(() => {
     const savedPhone = localStorage.getItem('mbti_phone')
     if (savedPhone) setPhone(savedPhone)
   }, [])
 
-  // ç›‘å¬ç™»å½•çŠ¶æ€å˜åŒ–
   useEffect(() => {
     const handleLoginChange = () => {
       const savedPhone = localStorage.getItem('mbti_phone')
@@ -28,7 +28,6 @@ export default function UserMenu() {
     return () => window.removeEventListener('mbti-login-change', handleLoginChange)
   }, [])
 
-  // ç‚¹å‡»å¤–éƒ¨å…³é—­èœå•
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
@@ -42,11 +41,11 @@ export default function UserMenu() {
 
   const handleLogin = async () => {
     if (!inputPhone || !/^1[3-9]\d{9}$/.test(inputPhone)) {
-      setError('è¯·è¾“å…¥æ­£ç¡®çš„æ‰‹æœºå·')
+      setError('ÇëÊäÈëÕıÈ·µÄÊÖ»úºÅ')
       return
     }
     if (!inputPin || !/^\d{4}$/.test(inputPin)) {
-      setError('è¯·è¾“å…¥4ä½æ•°å­—å¯†ç ')
+      setError('ÇëÊäÈë 4 Î»Êı×ÖÃÜÂë')
       return
     }
     setError('')
@@ -55,19 +54,19 @@ export default function UserMenu() {
     try {
       const resp = await fetch(`/api/user/query?phone=${encodeURIComponent(inputPhone)}&pin=${encodeURIComponent(inputPin)}`)
       const data = await resp.json()
-      
+
       if (resp.status === 401 || data.needPin) {
-        setError('å¯†ç é”™è¯¯')
+        setError('ÃÜÂë´íÎó')
         setLoading(false)
         return
       }
 
       if (!resp.ok) {
-        setError(data.error || 'ç™»å½•å¤±è´¥ï¼Œè¯·é‡è¯•')
+        setError(data.error || 'µÇÂ¼Ê§°Ü£¬ÇëÖØÊÔ')
         setLoading(false)
         return
       }
-      
+
       if (data.found) {
         localStorage.setItem('mbti_phone', inputPhone)
         localStorage.setItem('mbti_pin', inputPin)
@@ -77,10 +76,10 @@ export default function UserMenu() {
         setInputPin('')
         window.dispatchEvent(new Event('mbti-login-change'))
       } else {
-        setError('è´¦å·ä¸å­˜åœ¨ï¼Œè¯·å…ˆå®Œæˆæµ‹è¯•')
+        setError('ÕËºÅ²»´æÔÚ£¬ÇëÏÈÍê³É²âÊÔ')
       }
     } catch {
-      setError('ç™»å½•å¤±è´¥ï¼Œè¯·é‡è¯•')
+      setError('µÇÂ¼Ê§°Ü£¬ÇëÖØÊÔ')
     } finally {
       setLoading(false)
     }
@@ -94,7 +93,6 @@ export default function UserMenu() {
     setShowMenu(false)
   }
 
-  // å·²ç™»å½•çŠ¶æ€
   if (phone) {
     return (
       <div className="relative" ref={menuRef}>
@@ -113,19 +111,19 @@ export default function UserMenu() {
               onClick={() => { navigate('/history'); setShowMenu(false) }}
               className="w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
             >
-              ğŸ“‹ å†å²è®°å½•
+              {t('nav_history')}
             </button>
             <button
               onClick={() => { navigate('/recharge'); setShowMenu(false) }}
               className="w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
             >
-              ğŸ’° å……å€¼ç§¯åˆ†
+              {t('nav_recharge')}
             </button>
             <button
               onClick={handleLogout}
               className="w-full px-3 py-2 text-left text-sm text-slate-500 hover:bg-slate-50"
             >
-              é€€å‡ºç™»å½•
+              {t('nav_logout')}
             </button>
           </div>
         )}
@@ -133,32 +131,31 @@ export default function UserMenu() {
     )
   }
 
-  // æœªç™»å½•çŠ¶æ€
   return (
     <div className="relative" ref={menuRef}>
       <button
         onClick={() => setShowLogin(!showLogin)}
         className="mbti-pill hover:bg-white"
       >
-        ç™»å½•
+        {t('nav_login')}
       </button>
 
       {showLogin && (
         <div className="absolute right-0 top-full mt-2 w-72 mbti-card p-4 z-50">
-          <h3 className="text-sm font-bold text-slate-900 mb-3">ç™»å½•æŸ¥çœ‹å†å²è®°å½•</h3>
+          <h3 className="text-sm font-bold text-slate-900 mb-3">{t('nav_history')}</h3>
           <div className="space-y-2">
             <input
               type="tel"
               value={inputPhone}
               onChange={(e) => setInputPhone(e.target.value.replace(/\D/g, '').slice(0, 11))}
-              placeholder="æ‰‹æœºå·"
+              placeholder={t('history_phone_ph')}
               className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:border-slate-400 focus:outline-none"
             />
             <input
               type="tel"
               value={inputPin}
               onChange={(e) => setInputPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
-              placeholder="4ä½æ•°å­—å¯†ç "
+              placeholder={t('history_pin_ph')}
               className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:border-slate-400 focus:outline-none"
               onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
             />
@@ -168,10 +165,10 @@ export default function UserMenu() {
               disabled={loading}
               className="w-full mbti-button-primary text-sm disabled:opacity-50"
             >
-              {loading ? 'ç™»å½•ä¸­...' : 'ç™»å½•'}
+              {loading ? 'µÇÂ¼ÖĞ...' : t('nav_login')}
             </button>
             <p className="text-xs text-slate-400 text-center">
-              å®Œæˆæµ‹è¯•åè‡ªåŠ¨åˆ›å»ºè´¦å·
+              Íê³É²âÊÔºó×Ô¶¯´´½¨ÕËºÅ
             </p>
           </div>
         </div>
