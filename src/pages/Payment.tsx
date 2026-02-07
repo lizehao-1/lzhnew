@@ -246,8 +246,8 @@ export default function Payment() {
         {step === 'phone' && (
           <div>
             <div className="text-center mb-4">
-              <h2 className="text-lg font-bold text-slate-900">输入手机号查看结果</h2>
-              <p className="text-xs text-slate-500 mt-1">用于保存记录，下次可直接查询历史结果</p>
+              <h2 className="text-lg font-bold text-slate-900">保存你的测试结果</h2>
+              <p className="text-xs text-slate-500 mt-1">支付后可随时查看历史记录</p>
             </div>
             <div className="space-y-3">
               <input
@@ -262,10 +262,13 @@ export default function Payment() {
                   type="tel"
                   value={pin}
                   onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                  placeholder="设置4位PIN码（用于验证身份）"
+                  placeholder="设置4位数字密码"
                   className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-slate-400 focus:outline-none text-center text-lg tracking-widest"
                 />
-                <p className="text-xs text-slate-400 mt-1 text-center">首次使用设置PIN码，之后查询需要输入</p>
+                <p className="text-xs text-slate-400 mt-2 text-center leading-relaxed">
+                  🔒 密码用于保护你的测试记录，防止他人查看<br/>
+                  我们只保存测试结果，不收集任何个人信息
+                </p>
               </div>
               {phoneError && <p className="text-xs text-red-500 text-center">{phoneError}</p>}
               <button className="w-full mbti-button-primary" onClick={handlePhoneSubmit}>

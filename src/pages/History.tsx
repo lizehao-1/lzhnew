@@ -131,7 +131,7 @@ export default function History() {
     <div className="mx-auto max-w-xl px-4 py-10">
       <div className="mbti-card p-6">
         <h1 className="text-xl font-black text-slate-950 text-center mb-2">查询历史记录</h1>
-        <p className="text-xs text-slate-500 text-center mb-6">输入手机号和PIN码查看之前的测试结果</p>
+        <p className="text-xs text-slate-500 text-center mb-6">输入手机号和密码查看之前的测试结果</p>
 
         <div className="space-y-3 mb-6">
           <input
@@ -145,7 +145,7 @@ export default function History() {
             type="tel"
             value={pin}
             onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
-            placeholder="请输入4位PIN码"
+            placeholder="请输入4位数字密码"
             className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-slate-400 focus:outline-none text-center text-lg tracking-widest"
             onKeyDown={(e) => e.key === 'Enter' && handleQuery()}
           />
