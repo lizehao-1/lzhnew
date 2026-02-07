@@ -55,14 +55,14 @@ function SetSelector({ onSelect }: { onSelect: (id: QuestionSetId) => void }) {
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-lg font-black text-slate-950">{set.name}</span>
-                  <span className="text-xs text-slate-400">{set.count} {t('test_question_unit')} �� {set.time}</span>
+                  <span className="text-xs text-slate-400">{set.count} {t('test_question_unit')} �� {set.time}</span>
                   {set.id === '48' && (
                     <span className="text-xs bg-sky-100 text-sky-700 px-2 py-0.5 rounded-full">{t('test_recommended')}</span>
                   )}
                 </div>
                 <p className="mt-1 text-sm text-slate-500">{set.desc}</p>
               </div>
-              <span className="text-slate-300 group-hover:text-slate-500 transition-colors">��</span>
+              <span className="text-slate-300 group-hover:text-slate-500 transition-colors">��</span>
             </div>
           </button>
         ))}
@@ -80,6 +80,8 @@ export default function Test() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [answers, setAnswers] = useState<Answers>({})
   const [isTransitioning, setIsTransitioning] = useState(false)
+  const [isFinishing, setIsFinishing] = useState(false)
+  const finishTimeoutRef = useRef<number | null>(null)
   const answersRef = useRef<Answers>({})
 
   const options = [
@@ -119,7 +121,15 @@ export default function Test() {
       localStorage.setItem('mbti_answers', JSON.stringify(answersRef.current))
       localStorage.setItem('mbti_result', result)
       localStorage.setItem('mbti_question_set', selectedSet || '48')
+      setIsFinishing(true)
+      setIsTransitioning(true)
       navigate('/payment')
+      if (finishTimeoutRef.current) {
+        window.clearTimeout(finishTimeoutRef.current)
+      }
+      finishTimeoutRef.current = window.setTimeout(() => {
+        window.location.assign('/payment')
+      }, 1200)
     }
   }
 
@@ -145,6 +155,11 @@ export default function Test() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 pb-10 pt-4 page-enter">
+      {isFinishing && (
+        <div className="mb-4 rounded-xl border border-slate-200 bg-white/80 px-4 py-3 text-sm text-slate-600 shadow-sm">
+          正在跳转到支付页面...
+        </div>
+      )}
       <div className="mb-5 rounded-xl border border-slate-200 bg-white/70 backdrop-blur px-4 py-3">
         <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
           <span>{t('test_progress', { current: currentIndex + 1, total: questions.length })}</span>
