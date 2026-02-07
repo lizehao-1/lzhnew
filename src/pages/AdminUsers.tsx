@@ -2,9 +2,12 @@ import { useState } from 'react'
 
 type UserRow = {
   phone: string
+  pin: string
   credits: number
   created_at?: number
   updated_at?: number
+  last_result?: string
+  last_ts?: number
 }
 
 export default function AdminUsers() {
@@ -86,12 +89,16 @@ export default function AdminUsers() {
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-sm font-semibold text-slate-800">{u.phone}</div>
+                  <div className="text-xs text-slate-500">PIN: {u.pin || '-'}</div>
                   <div className="text-xs text-slate-400">Updated: {formatTs(u.updated_at)}</div>
                   <div className="text-xs text-slate-400">Created: {formatTs(u.created_at)}</div>
                 </div>
                 <div className="text-right">
                   <div className="text-xs text-slate-500">Credits</div>
                   <div className="text-2xl font-black text-amber-600">{u.credits ?? 0}</div>
+                  <div className="text-xs text-slate-500 mt-2">Last result</div>
+                  <div className="text-sm font-semibold text-slate-700">{u.last_result || '-'}</div>
+                  <div className="text-xs text-slate-400">{formatTs(u.last_ts)}</div>
                 </div>
               </div>
             </div>
