@@ -56,6 +56,9 @@ export async function onRequest(context) {
     if (!mbtiResult) {
       return new Response(JSON.stringify({ error: 'mbtiResult required' }), { status: 400, headers })
     }
+    if (!/^1[3-9]\d{9}$/.test(phone)) {
+      return new Response(JSON.stringify({ error: 'valid phone required' }), { status: 400, headers })
+    }
 
     // 根据 mbtiResult 查价格表，找不到就用默认价格
     const finalPrice = PRICE_TABLE[mbtiResult] || PRICE_TABLE['default']

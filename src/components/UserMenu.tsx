@@ -56,8 +56,14 @@ export default function UserMenu() {
       const resp = await fetch(`/api/user/query?phone=${encodeURIComponent(inputPhone)}&pin=${encodeURIComponent(inputPin)}`)
       const data = await resp.json()
       
-      if (data.error === 'PIN码错误') {
+      if (resp.status === 401 || data.needPin) {
         setError('密码错误')
+        setLoading(false)
+        return
+      }
+
+      if (!resp.ok) {
+        setError(data.error || '登录失败，请重试')
         setLoading(false)
         return
       }
@@ -69,6 +75,7 @@ export default function UserMenu() {
         setShowLogin(false)
         setInputPhone('')
         setInputPin('')
+        window.dispatchEvent(new Event('mbti-login-change'))
       } else {
         setError('账号不存在，请先完成测试')
       }

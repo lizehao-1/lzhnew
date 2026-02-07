@@ -88,7 +88,7 @@ export default function Payment() {
       })
       const data = await resp.json()
       
-      if (data.error === 'PIN码错误') {
+      if (resp.status === 401) {
         setStep('phone')
         setPhoneError('密码错误，请重新输入')
         return
@@ -144,6 +144,11 @@ export default function Payment() {
 
   const createOrder = async () => {
     if (!result) return
+    if (!/^1[3-9]\d{9}$/.test(phone)) {
+      setError('请先输入有效手机号')
+      setStep('phone')
+      return
+    }
     setError(null)
     setLoading(true)
     try {
@@ -172,6 +177,17 @@ export default function Payment() {
     }
   }
 
+  const syncCreditsAfterPayment = useCallback(async () => {
+    const savedPhone = localStorage.getItem('mbti_phone')
+    const savedPin = localStorage.getItem('mbti_pin')
+    if (!savedPhone || !savedPin) return
+    try {
+      await fetch(`/api/user/query?phone=${encodeURIComponent(savedPhone)}&pin=${encodeURIComponent(savedPin)}&t=${Date.now()}`)
+    } catch {
+      // ignore
+    }
+  }, [])
+
   // 查询订单状态（后端会自动补偿积分）
   const checkOrderStatus = useCallback(async () => {
     if (!payData) return false
@@ -184,13 +200,14 @@ export default function Payment() {
         // 订单已支付，后端已自动补偿积分
         localStorage.removeItem('mbti_pending_order')
         localStorage.setItem('mbti_paid', 'true')
+        await syncCreditsAfterPayment()
         window.dispatchEvent(new Event('mbti-login-change'))
         navigate('/result')
         return true
       }
     } catch { /* ignore */ }
     return false
-  }, [payData, navigate])
+  }, [payData, navigate, syncCreditsAfterPayment])
 
   // 轮询支付状态
   useEffect(() => {

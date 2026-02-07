@@ -54,7 +54,15 @@ export default function History() {
     try {
       const resp = await fetch(`/api/user/query?phone=${encodeURIComponent(phone)}&pin=${encodeURIComponent(pin)}&t=${Date.now()}`)
       const data = await resp.json()
-      if (data.found && !data.error) {
+      if (resp.status === 401 || data.needPin) {
+        setRecords(null)
+        setCredits(0)
+        return
+      }
+      if (!resp.ok) {
+        return
+      }
+      if (data.found) {
         setRecords(data.records?.length > 0 ? [...data.records].reverse() : [])
         setCredits(data.credits || 0)
         setNotFound(data.records?.length === 0)
@@ -94,21 +102,32 @@ export default function History() {
       const resp = await fetch(`/api/user/query?phone=${encodeURIComponent(phone)}&pin=${encodeURIComponent(pin)}&t=${Date.now()}`)
       const data = await resp.json()
       
-      if (data.error === 'PIN码错误') {
+      if (resp.status === 401 || data.needPin) {
         setPhoneError('PIN码错误')
         setRecords(null)
+        setCredits(0)
+        setLoading(false)
+        return
+      }
+
+      if (!resp.ok) {
+        setPhoneError(data.error || '查询失败，请重试')
+        setRecords(null)
+        setCredits(0)
         setLoading(false)
         return
       }
       
-      if (data.found && data.records?.length > 0) {
-        setRecords(data.records.reverse())
+      if (data.found) {
+        const list = data.records?.length > 0 ? [...data.records].reverse() : []
+        setRecords(list)
         setCredits(data.credits || 0)
         // 保存到本地，方便后续使用
         localStorage.setItem('mbti_phone', phone)
         localStorage.setItem('mbti_pin', pin)
         // 触发登录状态变化事件
         window.dispatchEvent(new Event('mbti-login-change'))
+        setNotFound(list.length === 0)
       } else {
         setNotFound(true)
         setRecords(null)

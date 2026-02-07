@@ -42,11 +42,33 @@ export default function Recharge() {
     }
   }, [])
 
+  useEffect(() => {
+    const refresh = () => {
+      const savedPhone = localStorage.getItem('mbti_phone')
+      const savedPin = localStorage.getItem('mbti_pin')
+      if (savedPhone && savedPin) {
+        setPhone(savedPhone)
+        setPin(savedPin)
+        fetchCredits(savedPhone, savedPin)
+      }
+    }
+    window.addEventListener('focus', refresh)
+    window.addEventListener('mbti-login-change', refresh)
+    return () => {
+      window.removeEventListener('focus', refresh)
+      window.removeEventListener('mbti-login-change', refresh)
+    }
+  }, [])
+
   const fetchCredits = async (phone: string, pin: string) => {
     try {
-      const resp = await fetch(`/api/user/query?phone=${encodeURIComponent(phone)}&pin=${encodeURIComponent(pin)}`)
+      const resp = await fetch(`/api/user/query?phone=${encodeURIComponent(phone)}&pin=${encodeURIComponent(pin)}&t=${Date.now()}`)
       const data = await resp.json()
-      if (data.found && !data.error) {
+      if (!resp.ok || resp.status === 401 || data.needPin) {
+        setCurrentCredits(0)
+        return
+      }
+      if (data.found) {
         setCurrentCredits(data.credits || 0)
       }
     } catch {
