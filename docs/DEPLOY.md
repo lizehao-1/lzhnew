@@ -3,17 +3,21 @@
 ## 快速部署
 
 ```bash
+cd mbti-v2
+
 # 1. 构建
 npm run build
 
-# 2. 部署到 Cloudflare Pages
+# 2. 部署到 Cloudflare Pages（自动部署到 lizehao.asia）
 npx wrangler pages deploy dist --project-name=mbti-test --commit-dirty=true
 
-# 3. 提交到 Git
+# 3. 提交到 GitHub
 git add -A
 git commit -m "描述"
 git push
 ```
+
+**注意**：部署后会自动同步到自定义域名 `lizehao.asia`，无需额外配置。
 
 ## 环境配置
 
@@ -109,5 +113,7 @@ GitHub 仓库: `lizehao-1/mbti-v2`
 
 ## 域名
 
+- 主域名: `lizehao.asia`（Cloudflare 自动同步）
 - Cloudflare Pages: `mbti-test-a06.pages.dev`
-- 自定义域名: `lizehao.asia`（需在 Cloudflare 配置）
+
+部署到 Cloudflare Pages 后会自动同步到 lizehao.asia，无需手动配置。
