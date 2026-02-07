@@ -23,7 +23,8 @@ export async function onRequestGet(context) {
     }
     
     // 从 KV 获取数据
-    const data = await env.MBTI_USERS?.get(phone, { cacheTtl: 0 })
+    // KV read cache has a minimum TTL of 30s on Cloudflare
+    const data = await env.MBTI_USERS?.get(phone, { cacheTtl: 30 })
     
     if (!data) {
       return noCacheResponse({ found: false, records: [], credits: 0 })

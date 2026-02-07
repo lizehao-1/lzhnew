@@ -65,7 +65,9 @@ export default function History() {
       }
       if (data.found) {
         setRecords(data.records?.length > 0 ? [...data.records].reverse() : [])
-        setCredits(data.credits || 0)
+        const creditsValue = data.credits || 0
+        setCredits(applyCreditOverride(creditsValue))
+        localStorage.setItem('mbti_last_known_credits', String(creditsValue))
         setNotFound(data.records?.length === 0)
       }
     } catch { /* ignore */ }
@@ -123,7 +125,9 @@ export default function History() {
       if (data.found) {
         const list = data.records?.length > 0 ? [...data.records].reverse() : []
         setRecords(list)
-        setCredits(data.credits || 0)
+        const creditsValue = data.credits || 0
+        setCredits(applyCreditOverride(creditsValue))
+        localStorage.setItem('mbti_last_known_credits', String(creditsValue))
         // 保存到本地，方便后续使用
         localStorage.setItem('mbti_phone', phone)
         localStorage.setItem('mbti_pin', pin)
@@ -322,4 +326,16 @@ function maybeSyncPayment(phone: string) {
       return false
     })
     .catch(() => false)
+}
+
+function applyCreditOverride(serverCredits: number) {
+  const override = Number(localStorage.getItem('mbti_credits_override') || 'NaN')
+  const at = Number(localStorage.getItem('mbti_credits_override_at') || '0')
+  if (!Number.isFinite(override) || !at) return serverCredits
+  if (Date.now() - at > 60 * 1000) {
+    localStorage.removeItem('mbti_credits_override')
+    localStorage.removeItem('mbti_credits_override_at')
+    return serverCredits
+  }
+  return override
 }
