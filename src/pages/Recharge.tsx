@@ -68,8 +68,7 @@ export default function Recharge() {
           mbtiResult: `RECHARGE_${selectedPkg.credits}`,
           phone,
           type: 'alipay', 
-          method: 'web',
-          price: selectedPkg.price
+          method: 'web'
         }),
       })
       const data = await resp.json()

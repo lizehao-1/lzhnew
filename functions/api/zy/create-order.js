@@ -26,8 +26,15 @@ export async function onRequest(context) {
   try {
     const API_BASE = env.ZY_API_BASE || 'http://pay.zy520888.com'
     const PID = env.ZY_PID
-    const PRICE = env.ZY_PRICE || '1'
     const PRIVATE_KEY = getPrivateKey(env.ZY_PRIVATE_KEY || '')
+    
+    // 价格表（后端定义，不可篡改）
+    const PRICE_TABLE = {
+      'default': '1',        // 默认单次支付
+      'RECHARGE_3': '1',     // 3次 ¥1
+      'RECHARGE_10': '3',    // 10次 ¥3
+      'RECHARGE_30': '8',    // 30次 ¥8
+    }
     
     // Cloudflare Pages 提供的 URL
     const url = new URL(request.url)
@@ -43,7 +50,6 @@ export async function onRequest(context) {
     const payload = await request.json().catch(() => ({}))
     const mbtiResult = payload.mbtiResult
     const phone = payload.phone || ''  // 手机号
-    const customPrice = payload.price  // 自定义价格（充值用）
     const type = payload.type || 'alipay'
     const apiMethod = payload.method || 'web'
 
@@ -51,11 +57,10 @@ export async function onRequest(context) {
       return new Response(JSON.stringify({ error: 'mbtiResult required' }), { status: 400, headers })
     }
 
-    // 使用自定义价格或环境变量价格
-    const finalPrice = customPrice || PRICE
+    // 根据 mbtiResult 查价格表，找不到就用默认价格
+    const finalPrice = PRICE_TABLE[mbtiResult] || PRICE_TABLE['default']
 
     // 订单号格式：MBTI_手机号_时间戳_随机数（用于回调时识别用户）
-    // 如果是充值订单，格式：MBTI_手机号_RECHARGE_积分数_时间戳_随机数
     const outTradeNo = phone 
       ? `MBTI_${phone}_${Date.now()}_${Math.floor(Math.random() * 1000)}`
       : `MBTI_${Date.now()}_${Math.floor(Math.random() * 1000)}`
