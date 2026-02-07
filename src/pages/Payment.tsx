@@ -77,13 +77,12 @@ export default function Payment() {
     setStep('checking_credits')
     
     try {
-      // 保存测试结果到服务器
-      const answers = localStorage.getItem('mbti_answers')
+      // 保存测试结果到服务器（只存结果，不存答案）
       const questionSet = localStorage.getItem('mbti_question_set')
       const saveResp = await fetch('/api/user/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, pin, result, answers: answers ? JSON.parse(answers) : {}, questionSet })
+        body: JSON.stringify({ phone, pin, result, questionSet })
       })
       const saveData = await saveResp.json()
       

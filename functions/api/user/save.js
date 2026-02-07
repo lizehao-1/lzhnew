@@ -54,10 +54,9 @@ export async function onRequestPost(context) {
       userData.credits = 0
     }
     
-    // 添加新记录
+    // 添加新记录（只存结果，不存答案，节省空间）
     const newRecord = {
       result,
-      answers,
       questionSet,
       timestamp: Date.now(),
       viewed: false  // 是否已使用积分查看
