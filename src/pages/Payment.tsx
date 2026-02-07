@@ -53,6 +53,13 @@ export default function Payment() {
         if (orderTime && Date.now() - parseInt(orderTime) > 30 * 60 * 1000) {
           localStorage.removeItem('mbti_pending_order')
         } else {
+          // 先检查用户是否已有积分（回调可能已执行）
+          const checkPhone = order.phone || savedPhone
+          const checkPin = savedPin
+          if (checkPhone && checkPin) {
+            checkCreditsAndProceed(savedResult, checkPhone, checkPin, order)
+            return
+          }
           setPayData(order)
           setRecordTimestamp(order.recordTimestamp)
           setStep('checking') // 直接进入检查状态
@@ -104,6 +111,52 @@ export default function Payment() {
       }
     } catch {
       setStep('intro')
+    }
+  }
+
+  // 检查积分并处理（支付返回后调用）
+  const checkCreditsAndProceed = async (result: string, phone: string, pin: string, order: PayData) => {
+    setStep('checking_credits')
+    setPhone(phone)
+    setPin(pin)
+    try {
+      // 先查询用户积分
+      const queryResp = await fetch(`/api/user/query?phone=${encodeURIComponent(phone)}&pin=${encodeURIComponent(pin)}`)
+      const queryData = await queryResp.json()
+      
+      if (queryData.found && queryData.credits > 0) {
+        // 有积分，检查最新记录是否已查看
+        const records = queryData.records || []
+        const latestRecord = records[records.length - 1]
+        
+        if (latestRecord?.viewed) {
+          // 已查看，直接跳转结果页
+          localStorage.removeItem('mbti_pending_order')
+          localStorage.setItem('mbti_paid', 'true')
+          localStorage.setItem('mbti_result', latestRecord.result || result)
+          window.dispatchEvent(new Event('mbti-login-change'))
+          navigate('/result')
+          return
+        }
+        
+        // 有积分但未查看，使用积分
+        const timestamp = latestRecord?.timestamp || order.recordTimestamp
+        if (timestamp) {
+          await useCredit(timestamp, phone)
+          localStorage.removeItem('mbti_pending_order')
+          return
+        }
+      }
+      
+      // 没有积分，继续轮询订单状态
+      setPayData(order)
+      setRecordTimestamp(order.recordTimestamp || null)
+      setStep('checking')
+    } catch {
+      // 出错则继续轮询
+      setPayData(order)
+      setRecordTimestamp(order.recordTimestamp || null)
+      setStep('checking')
     }
   }
 
