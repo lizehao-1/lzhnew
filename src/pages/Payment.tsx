@@ -401,10 +401,12 @@ export default function Payment() {
             <button className="w-full mt-3 mbti-button-ghost" onClick={exitWithoutPay}>
               暂不支付，返回首页
             </button>
-            {/* 测试用模拟支付按钮 */}
-            <button className="w-full mt-2 text-xs text-orange-500 hover:text-orange-600 py-2" onClick={fakePayment}>
-              🔧 [测试] 模拟支付成功
-            </button>
+            {/* 测试用模拟支付按钮 - 仅开发环境显示 */}
+            {import.meta.env.DEV && (
+              <button className="w-full mt-2 text-xs text-orange-500 hover:text-orange-600 py-2" onClick={fakePayment}>
+                🔧 [测试] 模拟支付成功
+              </button>
+            )}
             {error && <p className="mt-3 text-xs text-red-500 text-center">{error}</p>}
           </div>
         )}
@@ -437,6 +439,15 @@ export default function Payment() {
             <div className="h-10 w-10 animate-spin rounded-full border-2 border-slate-200 border-t-slate-800 mx-auto" />
             <p className="mt-4 text-sm text-slate-600">正在确认支付...</p>
             <p className="mt-1 text-xs text-slate-400">确认后自动跳转</p>
+            <button 
+              className="mt-4 text-xs text-slate-400 hover:text-slate-600 underline"
+              onClick={() => {
+                setStep('pay')
+                setPollCount(0)
+              }}
+            >
+              取消等待，重新支付
+            </button>
           </div>
         )}
 

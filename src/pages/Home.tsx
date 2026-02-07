@@ -1,4 +1,5 @@
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
+import { useEffect, useState } from 'react'
 
 const features = [
   { icon: '🎯', title: '精准题目', desc: '每道题只问一个偏好，配有生活化示例，减少"看起来都对"的模糊感。' },
@@ -15,9 +16,33 @@ const dimensions = [
 
 export default function Home() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const [toast, setToast] = useState<string | null>(null)
+
+  // 显示来自其他页面的消息（如充值成功）
+  useEffect(() => {
+    const state = location.state as { message?: string } | null
+    if (state?.message) {
+      setToast(state.message)
+      // 清除 state 防止刷新后重复显示
+      window.history.replaceState({}, document.title)
+      // 3秒后自动消失
+      const timer = setTimeout(() => setToast(null), 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [location.state])
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:py-12">
+      {/* Toast 提示 */}
+      {toast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 animate-fade-in">
+          <div className="bg-emerald-500 text-white px-6 py-3 rounded-xl shadow-lg text-sm font-medium">
+            ✓ {toast}
+          </div>
+        </div>
+      )}
+
       {/* Hero Section */}
       <div className="grid items-center gap-8 lg:grid-cols-2 lg:gap-12">
         <div>

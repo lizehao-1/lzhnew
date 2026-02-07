@@ -116,8 +116,11 @@ export default function Recharge() {
           }
           // 触发全局积分刷新事件
           window.dispatchEvent(new Event('mbti-login-change'))
-          alert(`充值成功！获得 ${selectedPkg.credits} 次查看机会`)
-          navigate('/')
+          // 使用 toast 风格提示，不阻塞
+          setStep('select')
+          setPayData(null)
+          setPollCount(0)
+          navigate('/', { state: { message: `充值成功！获得 ${selectedPkg.credits} 次查看机会` } })
         }
       } catch { /* ignore */ }
     }, 2000)
@@ -231,13 +234,15 @@ export default function Recharge() {
               {loading ? '创建订单中...' : `支付 ¥${selectedPkg.price}`}
             </button>
             
-            {/* 测试用 */}
-            <button 
-              className="w-full mt-2 text-xs text-orange-500 hover:text-orange-600 py-2" 
-              onClick={fakeRecharge}
-            >
-              🔧 [测试] 模拟充值
-            </button>
+            {/* 测试用 - 仅开发环境显示 */}
+            {import.meta.env.DEV && (
+              <button 
+                className="w-full mt-2 text-xs text-orange-500 hover:text-orange-600 py-2" 
+                onClick={fakeRecharge}
+              >
+                🔧 [测试] 模拟充值
+              </button>
+            )}
             
             {error && <p className="mt-3 text-xs text-red-500 text-center">{error}</p>}
           </div>
@@ -272,6 +277,15 @@ export default function Recharge() {
             <div className="h-10 w-10 animate-spin rounded-full border-2 border-slate-200 border-t-slate-800 mx-auto" />
             <p className="mt-4 text-sm text-slate-600">正在确认支付...</p>
             <p className="mt-1 text-xs text-slate-400">确认后自动跳转</p>
+            <button 
+              className="mt-4 text-xs text-slate-400 hover:text-slate-600 underline"
+              onClick={() => {
+                setStep('pay')
+                setPollCount(0)
+              }}
+            >
+              取消等待，重新支付
+            </button>
           </div>
         )}
 
