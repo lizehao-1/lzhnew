@@ -1,53 +1,21 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { personalities, Personality } from '../data/personalities'
-import { questions } from '../data/questions'
 
-type Answers = Record<number, number>
-
-// 计算各维度得分
-function calculateDimensionScores(answers: Answers) {
-  const scores = { E: 0, I: 0, S: 0, N: 0, T: 0, F: 0, J: 0, P: 0 }
-  
-  questions.forEach((q) => {
-    const answer = answers[q.id] ?? 3
-    const score = answer - 3
-
-    if (q.dimension === 'EI') {
-      if (q.direction === 'positive') scores.E += score
-      else scores.I += score
-    } else if (q.dimension === 'SN') {
-      if (q.direction === 'positive') scores.S += score
-      else scores.N += score
-    } else if (q.dimension === 'TF') {
-      if (q.direction === 'positive') scores.T += score
-      else scores.F += score
-    } else if (q.dimension === 'JP') {
-      if (q.direction === 'positive') scores.J += score
-      else scores.P += score
-    }
-  })
-
-  return scores
-}
-
-// 计算维度百分比
-function getDimensionPercentages(scores: ReturnType<typeof calculateDimensionScores>) {
-  const getPercent = (a: number, b: number) => {
-    const total = Math.abs(a) + Math.abs(b)
-    if (total === 0) return 50
-    return Math.round((Math.max(a, 0) / (Math.max(a, 0) + Math.max(b, 0) + 0.01)) * 100)
-  }
+// 根据结果类型计算各维度百分比（简化版，基于结果字母）
+function getDimensionPercentagesFromResult(result: string) {
+  // 默认百分比，根据结果字母设置主导方向
+  const base = 65 // 主导方向的基础百分比
   
   return {
-    E: getPercent(scores.E, scores.I),
-    I: getPercent(scores.I, scores.E),
-    S: getPercent(scores.S, scores.N),
-    N: getPercent(scores.N, scores.S),
-    T: getPercent(scores.T, scores.F),
-    F: getPercent(scores.F, scores.T),
-    J: getPercent(scores.J, scores.P),
-    P: getPercent(scores.P, scores.J),
+    E: result[0] === 'E' ? base : 100 - base,
+    I: result[0] === 'I' ? base : 100 - base,
+    S: result[1] === 'S' ? base : 100 - base,
+    N: result[1] === 'N' ? base : 100 - base,
+    T: result[2] === 'T' ? base : 100 - base,
+    F: result[2] === 'F' ? base : 100 - base,
+    J: result[3] === 'J' ? base : 100 - base,
+    P: result[3] === 'P' ? base : 100 - base,
   }
 }
 
@@ -105,13 +73,11 @@ function Section({ title, icon, children }: { title: string; icon?: string; chil
 export default function Result() {
   const navigate = useNavigate()
   const [personality, setPersonality] = useState<Personality | null>(null)
-  const [answers, setAnswers] = useState<Answers>({})
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     const result = localStorage.getItem('mbti_result')
     const paid = localStorage.getItem('mbti_paid')
-    const savedAnswers = localStorage.getItem('mbti_answers')
 
     if (!result) {
       navigate('/')
@@ -125,11 +91,13 @@ export default function Result() {
 
     const p = personalities[result]
     if (p) setPersonality(p)
-    if (savedAnswers) setAnswers(JSON.parse(savedAnswers))
   }, [navigate])
 
-  const scores = useMemo(() => calculateDimensionScores(answers), [answers])
-  const percentages = useMemo(() => getDimensionPercentages(scores), [scores])
+  // 直接根据结果类型计算百分比，不依赖答案
+  const percentages = useMemo(() => {
+    if (!personality) return { E: 50, I: 50, S: 50, N: 50, T: 50, F: 50, J: 50, P: 50 }
+    return getDimensionPercentagesFromResult(personality.type)
+  }, [personality])
 
   const restart = () => {
     localStorage.removeItem('mbti_answers')

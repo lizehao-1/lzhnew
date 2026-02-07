@@ -4,13 +4,13 @@ import UserMenu from './UserMenu'
 
 function LogoMark() {
   return (
-    <div className="flex items-center gap-3">
-      <div className="h-10 w-10 rounded-2xl bg-slate-950 text-white grid place-items-center shadow-[0_10px_30px_rgba(2,6,23,0.20)]">
-        <span className="font-black tracking-tight">MB</span>
+    <div className="flex items-center gap-2">
+      <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-xl sm:rounded-2xl bg-slate-950 text-white grid place-items-center shadow-[0_10px_30px_rgba(2,6,23,0.20)]">
+        <span className="font-black tracking-tight text-xs sm:text-sm">MB</span>
       </div>
-      <div className="leading-tight">
+      <div className="leading-tight hidden sm:block">
         <div className="text-sm font-semibold text-slate-900">MBTI 测试</div>
-        <div className="text-xs text-slate-500">48 题 · 10 分钟</div>
+        <div className="text-xs text-slate-500">专业人格测试</div>
       </div>
     </div>
   )
@@ -30,12 +30,12 @@ export default function Shell({ children }: { children: ReactNode }) {
 
       {showChrome && (
         <header className="sticky top-0 z-10 border-b border-slate-200/60 bg-white/55 backdrop-blur">
-          <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
+          <div className="mx-auto flex max-w-6xl items-center justify-between px-3 sm:px-4 py-2 sm:py-3">
             <Link to="/" className="rounded-xl focus:outline-none focus:ring-4 focus:ring-sky-200">
               <LogoMark />
             </Link>
-            <nav className="flex items-center gap-2">
-              <Link className="mbti-pill hover:bg-white" to="/test">
+            <nav className="flex items-center gap-1 sm:gap-2">
+              <Link className="mbti-pill hover:bg-white text-xs sm:text-sm px-2 sm:px-3" to="/test">
                 开始测试
               </Link>
               <UserMenu />
