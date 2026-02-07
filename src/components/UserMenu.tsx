@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 
 type UserData = {
   phone: string
@@ -9,6 +9,7 @@ type UserData = {
 
 export default function UserMenu() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [user, setUser] = useState<UserData | null>(null)
   const [showLogin, setShowLogin] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
@@ -27,6 +28,15 @@ export default function UserMenu() {
       fetchUserData(savedPhone, savedPin)
     }
   }, [])
+
+  // 页面切换时刷新积分
+  useEffect(() => {
+    const savedPhone = localStorage.getItem('mbti_phone')
+    const savedPin = localStorage.getItem('mbti_pin')
+    if (savedPhone && savedPin && user) {
+      fetchUserData(savedPhone, savedPin)
+    }
+  }, [location.pathname])
 
   // 点击外部关闭菜单
   useEffect(() => {

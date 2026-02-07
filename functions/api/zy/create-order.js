@@ -43,6 +43,7 @@ export async function onRequest(context) {
     const payload = await request.json().catch(() => ({}))
     const mbtiResult = payload.mbtiResult
     const phone = payload.phone || ''  // 手机号
+    const customPrice = payload.price  // 自定义价格（充值用）
     const type = payload.type || 'alipay'
     const apiMethod = payload.method || 'web'
 
@@ -50,7 +51,11 @@ export async function onRequest(context) {
       return new Response(JSON.stringify({ error: 'mbtiResult required' }), { status: 400, headers })
     }
 
+    // 使用自定义价格或环境变量价格
+    const finalPrice = customPrice || PRICE
+
     // 订单号格式：MBTI_手机号_时间戳_随机数（用于回调时识别用户）
+    // 如果是充值订单，格式：MBTI_手机号_RECHARGE_积分数_时间戳_随机数
     const outTradeNo = phone 
       ? `MBTI_${phone}_${Date.now()}_${Math.floor(Math.random() * 1000)}`
       : `MBTI_${Date.now()}_${Math.floor(Math.random() * 1000)}`
@@ -71,7 +76,7 @@ export async function onRequest(context) {
       notify_url: notifyUrl,
       return_url: returnUrl,
       name: 'MBTI报告解锁',
-      money: parseFloat(PRICE).toFixed(2),
+      money: parseFloat(finalPrice).toFixed(2),
       clientip,
       param: mbtiResult,
       timestamp: now,
@@ -95,7 +100,7 @@ export async function onRequest(context) {
       tradeNo: resp.trade_no,
       payType: resp.pay_type,
       payInfo: resp.pay_info,
-      money: PRICE,
+      money: finalPrice,
     }), { status: 200, headers })
 
   } catch (err) {

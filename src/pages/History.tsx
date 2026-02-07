@@ -213,9 +213,17 @@ export default function History() {
             })}
             
             {credits === 0 && (
-              <p className="text-xs text-center text-slate-500 mt-4">
-                💡 支付 ¥1 可获得3次查看机会
-              </p>
+              <div className="text-center mt-4">
+                <p className="text-xs text-slate-500 mb-2">
+                  💡 积分不足，无法查看完整报告
+                </p>
+                <button 
+                  onClick={() => navigate('/recharge')}
+                  className="text-sm text-sky-600 hover:text-sky-700 font-medium"
+                >
+                  去充值 →
+                </button>
+              </div>
             )}
           </div>
         )}

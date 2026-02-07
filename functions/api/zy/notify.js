@@ -48,13 +48,22 @@ export async function onRequest(context) {
     
     // 从订单号中提取手机号（格式：MBTI_手机号_时间戳）
     const outTradeNo = params.out_trade_no || ''
+    const paramValue = params.param || ''  // 包含 RECHARGE_积分数 或 MBTI类型
     const parts = outTradeNo.split('_')
     if (parts.length >= 2 && parts[0] === 'MBTI') {
       const phone = parts[1]
       if (/^1[3-9]\d{9}$/.test(phone)) {
+        // 判断是充值还是普通支付
+        let creditsToAdd = 3  // 默认3积分
+        if (paramValue.startsWith('RECHARGE_')) {
+          const rechargeCredits = parseInt(paramValue.replace('RECHARGE_', ''), 10)
+          if (rechargeCredits > 0) {
+            creditsToAdd = rechargeCredits
+          }
+        }
         // 增加用户积分
-        await addCredits(env, phone)
-        console.log('Credits added for phone:', phone)
+        await addCredits(env, phone, creditsToAdd)
+        console.log('Credits added for phone:', phone, 'amount:', creditsToAdd)
       }
     }
     
@@ -68,12 +77,12 @@ export async function onRequest(context) {
 }
 
 // 增加用户积分
-async function addCredits(env, phone) {
+async function addCredits(env, phone, amount = 3) {
   try {
     const data = await env.MBTI_USERS?.get(phone)
     if (!data) {
       // 用户不存在，创建新用户
-      const userData = { phone, credits: 3, records: [] }
+      const userData = { phone, credits: amount, records: [] }
       await env.MBTI_USERS?.put(phone, JSON.stringify(userData))
       return
     }
@@ -82,7 +91,7 @@ async function addCredits(env, phone) {
     if (typeof userData.credits !== 'number') {
       userData.credits = 0
     }
-    userData.credits += 3
+    userData.credits += amount
     await env.MBTI_USERS?.put(phone, JSON.stringify(userData))
   } catch (err) {
     console.error('Add credits error:', err.message)
