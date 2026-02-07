@@ -5,6 +5,7 @@ import Payment from './pages/Payment'
 import Result from './pages/Result'
 import History from './pages/History'
 import Recharge from './pages/Recharge'
+import AdminUsers from './pages/AdminUsers'
 import Shell from './components/Shell'
 
 function App() {
@@ -18,6 +19,7 @@ function App() {
           <Route path="/result" element={<Result />} />
           <Route path="/history" element={<History />} />
           <Route path="/recharge" element={<Recharge />} />
+          <Route path="/admin" element={<AdminUsers />} />
         </Routes>
       </Shell>
     </BrowserRouter>
