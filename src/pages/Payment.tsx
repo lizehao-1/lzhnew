@@ -48,11 +48,19 @@ export default function Payment() {
     if (savedOrder) {
       try {
         const order = JSON.parse(savedOrder)
-        setPayData(order)
-        setRecordTimestamp(order.recordTimestamp)
-        setStep('checking') // 直接进入检查状态
-        return // 不执行自动登录，直接检查订单
-      } catch { /* ignore */ }
+        // 检查订单是否超过30分钟，超过则清理
+        const orderTime = order.outTradeNo?.match(/_(\d+)_/)?.[1]
+        if (orderTime && Date.now() - parseInt(orderTime) > 30 * 60 * 1000) {
+          localStorage.removeItem('mbti_pending_order')
+        } else {
+          setPayData(order)
+          setRecordTimestamp(order.recordTimestamp)
+          setStep('checking') // 直接进入检查状态
+          return // 不执行自动登录，直接检查订单
+        }
+      } catch { 
+        localStorage.removeItem('mbti_pending_order')
+      }
     }
     
     // 如果已有完整登录信息，自动提交（延迟执行确保状态已更新）
@@ -442,8 +450,10 @@ export default function Payment() {
             <button 
               className="mt-4 text-xs text-slate-400 hover:text-slate-600 underline"
               onClick={() => {
-                setStep('pay')
+                localStorage.removeItem('mbti_pending_order')
+                setPayData(null)
                 setPollCount(0)
+                setStep('intro')
               }}
             >
               取消等待，重新支付
