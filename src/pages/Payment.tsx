@@ -117,6 +117,8 @@ export default function Payment() {
     setPhoneError('')
     localStorage.setItem('mbti_phone', phone)
     localStorage.setItem('mbti_pin', pin)
+    // 触发登录状态变化事件，让 UserMenu 更新
+    window.dispatchEvent(new Event('mbti-login-change'))
     setStep('checking_credits')
     
     try {

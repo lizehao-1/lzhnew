@@ -19,24 +19,33 @@ export default function UserMenu() {
   const [loading, setLoading] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
-  // 从 localStorage 恢复登录状态
-  useEffect(() => {
+  // 检查登录状态的函数
+  const checkLoginStatus = () => {
     const savedPhone = localStorage.getItem('mbti_phone')
     const savedPin = localStorage.getItem('mbti_pin')
     if (savedPhone && savedPin) {
-      // 验证并获取积分
       fetchUserData(savedPhone, savedPin)
+    } else {
+      setUser(null)
     }
+  }
+
+  // 从 localStorage 恢复登录状态
+  useEffect(() => {
+    checkLoginStatus()
   }, [])
 
-  // 页面切换时刷新积分
+  // 页面切换时刷新登录状态和积分
   useEffect(() => {
-    const savedPhone = localStorage.getItem('mbti_phone')
-    const savedPin = localStorage.getItem('mbti_pin')
-    if (savedPhone && savedPin && user) {
-      fetchUserData(savedPhone, savedPin)
-    }
+    checkLoginStatus()
   }, [location.pathname])
+
+  // 监听自定义登录事件（同一页面内其他组件触发）
+  useEffect(() => {
+    const handleLoginChange = () => checkLoginStatus()
+    window.addEventListener('mbti-login-change', handleLoginChange)
+    return () => window.removeEventListener('mbti-login-change', handleLoginChange)
+  }, [])
 
   // 点击外部关闭菜单
   useEffect(() => {

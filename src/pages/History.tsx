@@ -88,6 +88,8 @@ export default function History() {
         // 保存到本地，方便后续使用
         localStorage.setItem('mbti_phone', phone)
         localStorage.setItem('mbti_pin', pin)
+        // 触发登录状态变化事件
+        window.dispatchEvent(new Event('mbti-login-change'))
       } else {
         setNotFound(true)
         setRecords(null)
