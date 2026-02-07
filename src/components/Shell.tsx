@@ -1,5 +1,6 @@
 import { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import UserMenu from './UserMenu'
 
 function LogoMark() {
   return (
@@ -37,6 +38,7 @@ export default function Shell({ children }: { children: ReactNode }) {
               <Link className="mbti-pill hover:bg-white" to="/test">
                 开始测试
               </Link>
+              <UserMenu />
             </nav>
           </div>
         </header>
