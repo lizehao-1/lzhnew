@@ -54,11 +54,31 @@ export async function onRequestPost(context) {
       userData.credits = 0
     }
     
+    // 检查是否有相同结果的近期记录（5分钟内），避免重复创建
+    const now = Date.now()
+    const recentRecord = userData.records.find(r => 
+      r.result === result && 
+      r.questionSet === questionSet &&
+      (now - r.timestamp) < 5 * 60 * 1000  // 5分钟内
+    )
+    
+    if (recentRecord) {
+      // 返回已存在的记录，不重复创建
+      return Response.json({ 
+        success: true, 
+        recordCount: userData.records.length,
+        credits: userData.credits,
+        timestamp: recentRecord.timestamp,
+        isNewUser: false,
+        existingRecord: true
+      })
+    }
+    
     // 添加新记录（只存结果，不存答案，节省空间）
     const newRecord = {
       result,
       questionSet,
-      timestamp: Date.now(),
+      timestamp: now,
       viewed: false  // 是否已使用积分查看
     }
     userData.records.push(newRecord)
@@ -76,7 +96,8 @@ export async function onRequestPost(context) {
       recordCount: userData.records.length,
       credits: userData.credits,
       timestamp: newRecord.timestamp,
-      isNewUser: !existing
+      isNewUser: !existing,
+      existingRecord: false
     })
   } catch (err) {
     return Response.json({ error: err.message }, { status: 500 })
