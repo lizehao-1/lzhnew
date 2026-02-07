@@ -42,6 +42,9 @@ export default function Home() {
             <button className="mbti-button-primary text-base" onClick={() => navigate('/test')}>
               🚀 开始测试
             </button>
+            <button className="mbti-button-ghost text-sm" onClick={() => navigate('/history')}>
+              📋 查询历史
+            </button>
           </div>
 
           <p className="mt-4 text-xs text-slate-500">

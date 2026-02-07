@@ -1,6 +1,7 @@
-import { useMemo, useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { questions } from '../data/questions'
+import { Question } from '../data/questions'
+import { QuestionSetId, questionSets, loadQuestions } from '../data/question-sets'
 
 type Answers = Record<number, number>
 
@@ -12,12 +13,12 @@ const options = [
   { value: 1, label: '非常不同意' },
 ] as const
 
-function calculateResult(answers: Answers): string {
+function calculateResult(answers: Answers, questions: Question[]): string {
   const scores = { E: 0, I: 0, S: 0, N: 0, T: 0, F: 0, J: 0, P: 0 }
 
   questions.forEach((q) => {
     const answer = answers[q.id] ?? 3
-    const score = answer - 3 // -2 to +2
+    const score = answer - 3
 
     if (q.dimension === 'EI') {
       if (q.direction === 'positive') scores.E += score
@@ -42,21 +43,67 @@ function calculateResult(answers: Answers): string {
   )
 }
 
+// 选择题库版本
+function SetSelector({ onSelect }: { onSelect: (id: QuestionSetId) => void }) {
+  return (
+    <div className="mx-auto max-w-2xl px-4 py-10">
+      <div className="text-center mb-8">
+        <h1 className="text-2xl font-black text-slate-950">选择测试版本</h1>
+        <p className="mt-2 text-sm text-slate-500">题目越多结果越准确，但需要更多时间</p>
+      </div>
+      <div className="grid gap-3">
+        {questionSets.map((set) => (
+          <button
+            key={set.id}
+            onClick={() => onSelect(set.id)}
+            className="mbti-card p-5 text-left hover:border-slate-300 hover:shadow-md transition-all group"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-lg font-black text-slate-950">{set.name}</span>
+                  <span className="text-xs text-slate-400">{set.count}题 · {set.time}</span>
+                  {set.id === '48' && (
+                    <span className="text-xs bg-sky-100 text-sky-700 px-2 py-0.5 rounded-full">推荐</span>
+                  )}
+                </div>
+                <p className="mt-1 text-sm text-slate-500">{set.desc}</p>
+              </div>
+              <span className="text-slate-300 group-hover:text-slate-500 transition-colors">→</span>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function Test() {
   const navigate = useNavigate()
+  const [selectedSet, setSelectedSet] = useState<QuestionSetId | null>(null)
+  const [questions, setQuestions] = useState<Question[]>([])
+  const [loading, setLoading] = useState(false)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [answers, setAnswers] = useState<Answers>({})
   const [isTransitioning, setIsTransitioning] = useState(false)
   const answersRef = useRef<Answers>({})
 
+  // 加载题库
+  useEffect(() => {
+    if (!selectedSet) return
+    setLoading(true)
+    loadQuestions(selectedSet).then((qs) => {
+      setQuestions(qs)
+      setLoading(false)
+    })
+  }, [selectedSet])
+
   const currentQuestion = questions[currentIndex]
-  const progress = ((currentIndex + 1) / questions.length) * 100
-  const answeredCount = useMemo(() => Object.keys(answers).length, [answers])
+  const progress = questions.length ? ((currentIndex + 1) / questions.length) * 100 : 0
 
   const handleAnswer = (value: number) => {
-    if (isTransitioning) return // 防止快速点击
+    if (isTransitioning || !currentQuestion) return
 
-    // 同步更新 ref
     answersRef.current = { ...answersRef.current, [currentQuestion.id]: value }
     setAnswers(answersRef.current)
 
@@ -65,12 +112,12 @@ export default function Test() {
       setTimeout(() => {
         setCurrentIndex((i) => i + 1)
         setIsTransitioning(false)
-      }, 150)
+      }, 120)
     } else {
-      // 最后一题，直接跳转
-      const result = calculateResult(answersRef.current)
+      const result = calculateResult(answersRef.current, questions)
       localStorage.setItem('mbti_answers', JSON.stringify(answersRef.current))
       localStorage.setItem('mbti_result', result)
+      localStorage.setItem('mbti_question_set', selectedSet || '48')
       navigate('/payment')
     }
   }
@@ -80,42 +127,47 @@ export default function Test() {
     setCurrentIndex((i) => Math.max(0, i - 1))
   }
 
-  return (
-    <div className="mx-auto max-w-3xl px-4 pb-10 pt-4">
-      <div className="mb-6 rounded-2xl border border-slate-200 bg-white/65 backdrop-blur px-5 py-4 shadow-[0_14px_45px_rgba(2,6,23,0.08)]">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <div className="text-xs font-semibold text-slate-500">进度</div>
-            <div className="mt-1 text-sm font-semibold text-slate-900">
-              第 {currentIndex + 1} 题 / 共 {questions.length} 题
-              <span className="ml-2 text-slate-500">（已答 {answeredCount} 题）</span>
-            </div>
-          </div>
-          <div className="text-sm font-semibold text-slate-900">{Math.round(progress)}%</div>
-        </div>
+  // 未选择版本时显示选择器
+  if (!selectedSet) {
+    return <SetSelector onSelect={setSelectedSet} />
+  }
 
-        <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-slate-200">
+  // 加载中
+  if (loading || !currentQuestion) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-slate-800 mx-auto" />
+          <p className="mt-3 text-sm text-slate-500">加载题目中...</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="mx-auto max-w-2xl px-4 pb-10 pt-4">
+      {/* 进度条 */}
+      <div className="mb-5 rounded-xl border border-slate-200 bg-white/70 backdrop-blur px-4 py-3">
+        <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
+          <span>第 {currentIndex + 1} / {questions.length} 题</span>
+          <span>{Math.round(progress)}%</span>
+        </div>
+        <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
           <div
-            className="h-full rounded-full bg-gradient-to-r from-sky-500 via-emerald-400 to-orange-400 transition-all duration-300"
+            className="h-full rounded-full bg-gradient-to-r from-sky-500 to-emerald-400 transition-all duration-200"
             style={{ width: `${progress}%` }}
           />
         </div>
       </div>
 
-      <div className="mbti-card p-7 sm:p-9">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex-1">
-            <div className="text-xs font-semibold text-slate-500">请选一个最符合的</div>
-            <h2 className="mt-2 text-xl font-black tracking-tight text-slate-950 sm:text-2xl">
-              {currentQuestion.text}
-            </h2>
-            <p className="mt-3 text-sm text-slate-500 leading-relaxed bg-slate-50 rounded-xl px-4 py-3 border border-slate-100">
-              💡 {currentQuestion.example}
-            </p>
-          </div>
-        </div>
+      {/* 题目卡片 */}
+      <div className="mbti-card p-5 sm:p-6">
+        <h2 className="text-lg font-bold text-slate-900 leading-relaxed">
+          {currentQuestion.text}
+        </h2>
 
-        <div className="mt-7 grid gap-3">
+        {/* 选项 */}
+        <div className="mt-5 grid gap-2">
           {options.map((option) => {
             const selected = answers[currentQuestion.id] === option.value
             return (
@@ -124,44 +176,45 @@ export default function Test() {
                 onClick={() => handleAnswer(option.value)}
                 disabled={isTransitioning}
                 className={[
-                  'group w-full rounded-2xl border px-5 py-4 text-left transition',
+                  'w-full rounded-xl border px-4 py-3 text-left transition-all duration-150',
                   selected
-                    ? 'border-slate-950 bg-slate-950 text-white shadow-[0_16px_35px_rgba(2,6,23,0.25)]'
+                    ? 'border-slate-800 bg-slate-800 text-white'
                     : 'border-slate-200 bg-white/60 hover:bg-white hover:border-slate-300',
                 ].join(' ')}
               >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="text-sm font-semibold">{option.label}</div>
-                  <div
-                    className={[
-                      'h-8 w-8 rounded-xl border grid place-items-center text-xs font-black transition',
-                      selected
-                        ? 'border-white/25 bg-white/10'
-                        : 'border-slate-200 bg-white group-hover:border-slate-300',
-                    ].join(' ')}
-                  >
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">{option.label}</span>
+                  <span className={`text-xs w-5 h-5 rounded-md flex items-center justify-center ${selected ? 'bg-white/20' : 'bg-slate-100'}`}>
                     {option.value}
-                  </div>
+                  </span>
                 </div>
               </button>
             )
           })}
         </div>
 
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+        {/* 生活化提示 - 固定高度 */}
+        <div className="mt-4 min-h-[60px] flex items-start">
+          <p className="text-xs text-slate-400 leading-relaxed">
+            💡 {currentQuestion.example}
+          </p>
+        </div>
+
+        {/* 底部操作 */}
+        <div className="mt-4 flex items-center justify-between pt-4 border-t border-slate-100">
           <button
             onClick={goBack}
-            className="mbti-button-ghost disabled:opacity-40 disabled:cursor-not-allowed"
+            className="text-sm text-slate-500 hover:text-slate-700 disabled:opacity-30"
             disabled={currentIndex === 0 || isTransitioning}
           >
-            返回上一题
+            ← 上一题
           </button>
-          <button className="mbti-pill hover:bg-white" onClick={() => navigate('/')}>
+          <button
+            className="text-xs text-slate-400 hover:text-slate-600"
+            onClick={() => navigate('/')}
+          >
             退出
           </button>
-        </div>
-        <div className="mt-3 text-xs text-slate-500 text-center">
-          选择后自动进入下一题（最后一题会进入支付页）。
         </div>
       </div>
     </div>

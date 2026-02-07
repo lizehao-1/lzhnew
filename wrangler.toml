@@ -4,3 +4,9 @@ pages_build_output_dir = "dist"
 
 # 环境变量在 Cloudflare Dashboard 中设置
 # ZY_PID, ZY_PRIVATE_KEY, ZY_PUBLIC_KEY, ZY_PRICE
+
+# KV 存储用户数据
+# 需要在 Cloudflare Dashboard 创建 KV namespace 并绑定
+# [[kv_namespaces]]
+# binding = "MBTI_USERS"
+# id = "your-kv-namespace-id"
