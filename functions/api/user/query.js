@@ -26,22 +26,35 @@ export async function onRequestGet(context) {
     const data = await env.MBTI_USERS?.get(phone)
     
     if (!data) {
-      return Response.json({ found: false, records: [], credits: 0 })
+      return noCacheResponse({ found: false, records: [], credits: 0 })
     }
     
     const userData = JSON.parse(data)
     
     // 验证PIN码
     if (userData.pin && userData.pin !== pin) {
-      return Response.json({ error: 'PIN码错误', found: true, needPin: true }, { status: 401 })
+      return noCacheResponse({ error: 'PIN码错误', found: true, needPin: true }, 401)
     }
     
-    return Response.json({ 
+    return noCacheResponse({ 
       found: true, 
       records: userData.records,
       credits: userData.credits || 0
     })
   } catch (err) {
-    return Response.json({ error: err.message }, { status: 500 })
+    return noCacheResponse({ error: err.message }, 500)
   }
+}
+
+// 返回禁止缓存的 JSON 响应
+function noCacheResponse(data, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    }
+  })
 }

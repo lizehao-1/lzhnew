@@ -12,14 +12,14 @@ export async function onRequestPost(context) {
     const { phone, timestamp } = await request.json()
     
     if (!phone || !timestamp) {
-      return Response.json({ error: '缺少必要参数' }, { status: 400 })
+      return noCacheResponse({ error: '缺少必要参数' }, 400)
     }
     
     // 从 KV 获取数据
     const data = await env.MBTI_USERS?.get(phone)
     
     if (!data) {
-      return Response.json({ error: '用户不存在' }, { status: 404 })
+      return noCacheResponse({ error: '用户不存在' }, 404)
     }
     
     const userData = JSON.parse(data)
@@ -27,12 +27,12 @@ export async function onRequestPost(context) {
     // 找到对应记录
     const record = userData.records.find(r => r.timestamp === timestamp)
     if (!record) {
-      return Response.json({ error: '记录不存在' }, { status: 404 })
+      return noCacheResponse({ error: '记录不存在' }, 404)
     }
     
     // 如果已经查看过，不再消耗积分
     if (record.viewed) {
-      return Response.json({ 
+      return noCacheResponse({ 
         success: true, 
         credits: userData.credits,
         alreadyViewed: true 
@@ -41,11 +41,11 @@ export async function onRequestPost(context) {
     
     // 检查积分
     if (userData.credits <= 0) {
-      return Response.json({ 
+      return noCacheResponse({ 
         error: '积分不足，请先支付', 
         needPayment: true,
         credits: 0 
-      }, { status: 402 })
+      }, 402)
     }
     
     // 消耗积分
@@ -55,12 +55,25 @@ export async function onRequestPost(context) {
     // 保存回 KV
     await env.MBTI_USERS?.put(phone, JSON.stringify(userData))
     
-    return Response.json({ 
+    return noCacheResponse({ 
       success: true, 
       credits: userData.credits,
       alreadyViewed: false
     })
   } catch (err) {
-    return Response.json({ error: err.message }, { status: 500 })
+    return noCacheResponse({ error: err.message }, 500)
   }
+}
+
+// 返回禁止缓存的 JSON 响应
+function noCacheResponse(data, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    }
+  })
 }
