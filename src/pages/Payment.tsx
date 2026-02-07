@@ -148,13 +148,25 @@ export default function Payment() {
             </div>
 
             {step === 'intro' && (
-              <button
-                className="mt-6 w-full mbti-button-primary"
-                onClick={createOrder}
-                disabled={loading}
-              >
-                {loading ? '正在创建订单…' : `打开支付 ${displayPriceText}`}
-              </button>
+              <>
+                <button
+                  className="mt-6 w-full mbti-button-primary"
+                  onClick={createOrder}
+                  disabled={loading}
+                >
+                  {loading ? '正在创建订单…' : `打开支付 ${displayPriceText}`}
+                </button>
+                {/* 测试用：跳过支付按钮，正式上线时删除 */}
+                <button
+                  className="mt-3 w-full text-xs text-slate-400 hover:text-slate-600 underline"
+                  onClick={() => {
+                    localStorage.setItem('mbti_paid', 'true')
+                    navigate('/result')
+                  }}
+                >
+                  [测试] 跳过支付，直接查看结果
+                </button>
+              </>
             )}
           </div>
 
