@@ -189,9 +189,38 @@ export default function Payment() {
     }
   }
 
-  const skipPayment = () => {
-    localStorage.setItem('mbti_paid', 'true')
-    navigate('/result')
+  // 模拟支付成功（测试用）- 会增加积分
+  const fakePayment = async () => {
+    if (!phone || !recordTimestamp) {
+      alert('请先输入手机号')
+      return
+    }
+    try {
+      // 调用mark-paid增加积分
+      const markResp = await fetch('/api/user/mark-paid', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone })
+      })
+      const markData = await markResp.json()
+      if (markData.success) {
+        // 使用积分查看当前记录
+        await fetch('/api/user/use-credit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone, timestamp: recordTimestamp })
+        })
+        localStorage.setItem('mbti_paid', 'true')
+        navigate('/result')
+      }
+    } catch {
+      alert('操作失败')
+    }
+  }
+
+  // 普通用户退出（不支付）
+  const exitWithoutPay = () => {
+    navigate('/')
   }
 
   if (!result) return null
@@ -262,9 +291,13 @@ export default function Payment() {
             <button className="w-full mbti-button-primary" onClick={createOrder} disabled={loading}>
               {loading ? '创建订单中...' : `支付 ¥${displayPrice} 查看报告`}
             </button>
-            {/* 测试用跳过按钮 */}
-            <button className="w-full mt-3 text-xs text-slate-400 hover:text-slate-600" onClick={skipPayment}>
-              [测试] 跳过支付
+            {/* 普通用户退出按钮 */}
+            <button className="w-full mt-3 mbti-button-ghost" onClick={exitWithoutPay}>
+              暂不支付，返回首页
+            </button>
+            {/* 测试用模拟支付按钮 */}
+            <button className="w-full mt-2 text-xs text-orange-500 hover:text-orange-600 py-2" onClick={fakePayment}>
+              🔧 [测试] 模拟支付成功
             </button>
             {error && <p className="mt-3 text-xs text-red-500 text-center">{error}</p>}
           </div>
