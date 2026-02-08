@@ -6,7 +6,7 @@ export const visualLong: ImageQuestion[] = [
   {
     id: 5,
     kind: 'image',
-    prompt: '?????????????',
+    prompt: 'Pick the image that best matches your work style.',
     options: [
       { id: 'a', src: '/images/tests/big5.jpg', scores: { calm: 1 } },
       { id: 'b', src: '/images/tests/sjt.jpg', scores: { drive: 1 } },

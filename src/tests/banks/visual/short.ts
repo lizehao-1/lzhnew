@@ -4,7 +4,7 @@ export const visualShort: ImageQuestion[] = [
   {
     id: 1,
     kind: 'image',
-    prompt: '????????????????????',
+    prompt: 'Pick the image you are most drawn to.',
     options: [
       { id: 'a', src: '/images/tests/visual.jpg', scores: { curiosity: 1 } },
       { id: 'b', src: '/images/tests/mbti.jpg', scores: { structure: 1 } },
@@ -15,7 +15,7 @@ export const visualShort: ImageQuestion[] = [
   {
     id: 2,
     kind: 'image',
-    prompt: '???????????????',
+    prompt: 'Pick the image that feels most calming.',
     options: [
       { id: 'a', src: '/images/tests/big5.jpg', scores: { calm: 1 } },
       { id: 'b', src: '/images/tests/sjt.jpg', scores: { drive: 1 } },

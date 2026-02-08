@@ -109,11 +109,11 @@ export default function Big5() {
 
   if (result) {
     const bars: Array<{ k: string; label: string; v: number }> = [
-      { k: 'O', label: 'O ???', v: result.normalized.O },
-      { k: 'C', label: 'C ???', v: result.normalized.C },
-      { k: 'E', label: 'E ???', v: result.normalized.E },
-      { k: 'A', label: 'A ???', v: result.normalized.A },
-      { k: 'N', label: 'N ????', v: result.normalized.N },
+      { k: 'O', label: t('big5_trait_o'), v: result.normalized.O },
+      { k: 'C', label: t('big5_trait_c'), v: result.normalized.C },
+      { k: 'E', label: t('big5_trait_e'), v: result.normalized.E },
+      { k: 'A', label: t('big5_trait_a'), v: result.normalized.A },
+      { k: 'N', label: t('big5_trait_n'), v: result.normalized.N },
     ]
 
     return (

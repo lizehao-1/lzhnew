@@ -18,6 +18,11 @@ const MESSAGES: Messages = {
   nav_logout: { zh: '退出登录', en: 'Sign Out' },
   footer_disclaimer: { zh: '免责声明：所有测评仅作参考，不代表能力高低；请理性看待结果。', en: 'Disclaimer: Tests are for reference only and not measures of ability.' },
 
+  copy: { zh: '复制', en: 'Copy' },
+  copied: { zh: '已复制', en: 'Copied' },
+  show: { zh: '展开', en: 'Show' },
+  hide: { zh: '收起', en: 'Hide' },
+
   home_badge_1: { zh: '面试/行测辅助平台', en: 'Interview & Exam Helper' },
   home_badge_2: { zh: '人格 + 职业 + 认知', en: 'Personality + Career + Cognition' },
   home_badge_3: { zh: '持续更新题库', en: 'Continuously updated' },
@@ -210,6 +215,11 @@ const MESSAGES: Messages = {
   big5_len_long_meta: { zh: '约 10-12 分钟 · 36 题', en: '10-12 min · 36 items' },
   big5_result_title: { zh: 'Big Five 结果概览', en: 'Big Five summary' },
   big5_result_desc: { zh: '这是一个简化版概览，后续会生成更详细的面试表达建议。', en: 'A simplified summary; detailed coaching comes next.' },
+  big5_trait_o: { zh: '开放性 O', en: 'Openness (O)' },
+  big5_trait_c: { zh: '尽责性 C', en: 'Conscientiousness (C)' },
+  big5_trait_e: { zh: '外向性 E', en: 'Extraversion (E)' },
+  big5_trait_a: { zh: '宜人性 A', en: 'Agreeableness (A)' },
+  big5_trait_n: { zh: '神经质 N', en: 'Neuroticism (N)' },
 
   riasec_len_short_desc: { zh: '快速判断兴趣倾向。', en: 'Quick interest snapshot.' },
   riasec_len_short_meta: { zh: '约 3-4 分钟 · 8 题', en: '3-4 min · 8 items' },

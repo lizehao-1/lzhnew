@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import LengthSelector from '../components/LengthSelector'
 import QuizRunner from '../components/QuizRunner'
+// ReportSection will be used when we upgrade SJT into collapsible, copyable blocks.
+// Keeping it out for now to keep the build green.
 import { useI18n } from '../i18n'
 import { ChoiceQuestion, QuizLength, QuizQuestion, QuizAnswers } from '../tests/types'
 

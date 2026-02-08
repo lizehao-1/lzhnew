@@ -6,7 +6,7 @@ export const visualStandard: ImageQuestion[] = [
   {
     id: 3,
     kind: 'image',
-    prompt: '????????????/????',
+    prompt: 'Pick the image that feels most "you" today.',
     options: [
       { id: 'a', src: '/images/tests/mbti.jpg', scores: { structure: 1 } },
       { id: 'b', src: '/images/tests/sjt.jpg', scores: { pragmatism: 1 } },
@@ -17,7 +17,7 @@ export const visualStandard: ImageQuestion[] = [
   {
     id: 4,
     kind: 'image',
-    prompt: '?????????????????',
+    prompt: 'Pick the image that feels most motivating.',
     options: [
       { id: 'a', src: '/images/tests/sjt.jpg', scores: { drive: 1 } },
       { id: 'b', src: '/images/tests/riasec.jpg', scores: { explore: 1 } },
